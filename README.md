@@ -42,7 +42,7 @@
 - pip install --upgrade plotly
 
 
-Confirm:
-    - pip show tensorflow
-    - pip list | grep tensorflow
-    - pip list | findstr tensorflow
+## Confirm ##
+- pip show tensorflow
+- pip list | grep tensorflow
+- pip list | findstr tensorflow
