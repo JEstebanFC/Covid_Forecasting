@@ -16,7 +16,7 @@
     4. CONV2LSTM
 
 ###### Installation ######
-    ## Jupyter ##
+## Jupyter ##
 pip install jupyterlab
 pip install notebook
 pip install voila
@@ -35,7 +35,7 @@ pip install tslearn
 pip install pmdarima
 pip install tensorflow
 
-    ## FBProphet ##
+## FBProphet ##
 python -m pip install pystan==2.17.1.0
 python -m pip install fbprophet==0.6   
 python -m pip install --upgrade fbprophet
