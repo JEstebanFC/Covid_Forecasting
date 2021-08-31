@@ -17,32 +17,32 @@
 
 ###### Installation ######
 ## Jupyter ##
-pip install jupyterlab
-pip install notebook
-pip install voila
-pip install ipython
+- pip install jupyterlab
+- pip install notebook
+- pip install voila
+- pip install ipython
 
-pip install --upgrade pip
-pip install --upgrade setuptools
+- pip install --upgrade pip
+- pip install --upgrade setuptools
 
-pip install datetime
-pip install numpy
-pip install pandas
-pip install matplotlib
-pip install -U kaleido
-pip install -U scikit-learn
-pip install tslearn
-pip install pmdarima
-pip install tensorflow
+- pip install datetime
+- pip install numpy
+- pip install pandas
+- pip install matplotlib
+- pip install -U kaleido
+- pip install -U scikit-learn
+- pip install tslearn
+- pip install pmdarima
+- pip install tensorflow
 
 ## FBProphet ##
-python -m pip install pystan==2.17.1.0
-python -m pip install fbprophet==0.6   
-python -m pip install --upgrade fbprophet
-pip install --upgrade plotly
+- python -m pip install pystan==2.17.1.0
+- python -m pip install fbprophet==0.6   
+- python -m pip install --upgrade fbprophet
+- pip install --upgrade plotly
 
 
 Confirm:
-    pip show tensorflow
-    pip list | grep tensorflow
-    pip list | findstr tensorflow
+    - pip show tensorflow
+    - pip list | grep tensorflow
+    - pip list | findstr tensorflow
