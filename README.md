@@ -16,12 +16,6 @@
     4. CONV2LSTM
 
 ###### Installation ######
-## Jupyter ##
-- pip install jupyterlab
-- pip install notebook
-- pip install voila
-- pip install ipython
-
 - pip install --upgrade pip
 - pip install --upgrade setuptools
 
@@ -41,6 +35,11 @@
 - python -m pip install --upgrade fbprophet
 - pip install --upgrade plotly
 
+## Extra ##
+- pip install jupyterlab
+- pip install notebook
+- pip install voila
+- pip install ipython
 
 ## Confirm ##
 - pip show tensorflow
