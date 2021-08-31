@@ -3,6 +3,8 @@ import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from Utils.CovidDB import CovidDB
+
 from optparse import OptionParser
 from Models import DATA_PATH, RESULTS_PATH
 
@@ -12,6 +14,7 @@ from Models.Fbprophet import Fbprophet
 from Models.Smoothing import Smoothing
 from Models.Regression import Regression
 from Models.DickeyFuller import DickeyFuller
+
 
 def activeCases(state):
     active_path = RESULTS_PATH + '\\active_cases\\'
@@ -50,6 +53,12 @@ if __name__ == "__main__":
     
     models = ['regression','linear','polynomial','lasso','smoothing','exponential','holts']
     options.model = options.model.split(',')
+
+    # date = '8/29/21'
+    # covidDB = CovidDB()
+    # dailyCasesNZ = covidDB.countryCases('New Zealand',date)
+    # dailyCasesAustralia = covidDB.countryCases('Australia',date)
+    # exit()
 
     #### Active cases ####
     if options.state.lower() == 'list':
