@@ -1,19 +1,20 @@
 - Prediction:
-    1. Linear Regression
-    2. Polynomial regression with lasso
-    3. Simple and Exponential Smoothing 
-    4. Holt's Winter Model
-    5. Dickey-Fuller test
-    6. AR, MA and ARIMA Models
-    7. Auto AR, MA, ARIMA and SARIMA Models
-    8. AR, MA, ARIMA, SARIMA  using VARMAX Modeling
-    9. Facebook's Prophet Model
+    - Linear Regression
+    - Polynomial regression
+    - Lasso
+    - Simple and Exponential Smoothing 
+    - Holt's Winter Model
+    - Dickey-Fuller test
+    - AR, MA and ARIMA Models
+    - Facebook's Prophet Model
+    - AR, MA, ARIMA, SARIMA  using VARMAX Modeling
+    <!-- - Auto AR, MA, ARIMA and SARIMA Models -->
 
-- DeepLearning:
+<!-- - DeepLearning:
     1. LSTM
     2. CNN
     3. LSTM + CNN
-    4. CONV2LSTM
+    4. CONV2LSTM -->
 
 ###### Installation ######
 - pip install --upgrade pip
@@ -35,8 +36,7 @@
 - python -m pip install --upgrade fbprophet
 - pip install --upgrade plotly
 
-<!-- testing -->
-
+<!--
 ## Extra ##
 - pip install jupyterlab
 - pip install notebook
@@ -47,3 +47,4 @@
 - pip show tensorflow
 - pip list | grep tensorflow
 - pip list | findstr tensorflow
+-->
