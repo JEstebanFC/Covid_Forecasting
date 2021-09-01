@@ -18,6 +18,7 @@
 
 <details>
 <summary> Installation</summary>
+
 ### General tools
 - pip install --upgrade pip
 - pip install --upgrade setuptools
