@@ -82,13 +82,13 @@ if __name__ == "__main__":
                 regression.tslean()
             
             arima = Arima(state)
-            if 'ar' in options.model:
+            if 'ARIMA' in options.model or 'ar' in options.model:
                 arima.AR()
-            if 'ma' in options.model:
+            if 'ARIMA' in options.model or 'ma' in options.model:
                 arima.MA()
-            if 'arima' in options.model:
+            if 'ARIMA' in options.model or 'arima' in options.model:
                 arima.ARIMA()
-            if 'sarimax' in options.model:
+            if 'ARIMA' in options.model or 'sarimax' in options.model:
                 arima.SARIMAX()
             
             smoothing = Smoothing(state)
