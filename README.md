@@ -18,10 +18,9 @@
 
 <details>
 <summary> Installation</summary>
-
+### General tools
 - pip install --upgrade pip
 - pip install --upgrade setuptools
-
 - pip install datetime
 - pip install numpy
 - pip install pandas
@@ -31,7 +30,6 @@
 - pip install tslearn
 - pip install pmdarima
 - pip install tensorflow
-
 
 ### FBProphet
 - python -m pip install pystan==2.17.1.0
