@@ -1,4 +1,4 @@
-# Prediction Tools #
+# Prediction Tools
 - Linear Regression
 - Polynomial regression
 - Lasso
@@ -16,8 +16,9 @@
     3. LSTM + CNN
     4. CONV2LSTM -->
 
+# Installation
 <details>
-<summary> Installation</summary>
+<summary> Click to expand</summary>
 
 ### General tools
 - pip install --upgrade pip
