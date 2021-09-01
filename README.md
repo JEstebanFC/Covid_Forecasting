@@ -1,14 +1,14 @@
-- Prediction:
-    - Linear Regression
-    - Polynomial regression
-    - Lasso
-    - Simple and Exponential Smoothing 
-    - Holt's Winter Model
-    - Dickey-Fuller test
-    - AR, MA and ARIMA Models
-    - Facebook's Prophet Model
-    - AR, MA, ARIMA, SARIMA  using VARMAX Modeling
-    <!-- - Auto AR, MA, ARIMA and SARIMA Models -->
+# Prediction Tools #
+- Linear Regression
+- Polynomial regression
+- Lasso
+- Simple and Exponential Smoothing 
+- Holt's Winter Model
+- Dickey-Fuller test
+- AR, MA and ARIMA Models
+- Facebook's Prophet Model
+- AR, MA, ARIMA, SARIMA  using VARMAX Modeling
+<!-- - Auto AR, MA, ARIMA and SARIMA Models -->
 
 <!-- - DeepLearning:
     1. LSTM
@@ -16,7 +16,8 @@
     3. LSTM + CNN
     4. CONV2LSTM -->
 
-###### Installation ######
+<details>
+<summary> # Installation</summary>
 - pip install --upgrade pip
 - pip install --upgrade setuptools
 
@@ -29,6 +30,7 @@
 - pip install tslearn
 - pip install pmdarima
 - pip install tensorflow
+
 
 ## FBProphet ##
 - python -m pip install pystan==2.17.1.0
@@ -48,3 +50,4 @@
 - pip list | grep tensorflow
 - pip list | findstr tensorflow
 -->
+</details>
