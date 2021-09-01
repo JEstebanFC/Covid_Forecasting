@@ -17,7 +17,8 @@
     4. CONV2LSTM -->
 
 <details>
-<summary> # Installation</summary>
+<summary> Installation</summary>
+
 - pip install --upgrade pip
 - pip install --upgrade setuptools
 
@@ -32,7 +33,7 @@
 - pip install tensorflow
 
 
-## FBProphet ##
+### FBProphet
 - python -m pip install pystan==2.17.1.0
 - python -m pip install fbprophet==0.6   
 - python -m pip install --upgrade fbprophet
