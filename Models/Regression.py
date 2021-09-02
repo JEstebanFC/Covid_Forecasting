@@ -15,7 +15,6 @@ from sklearn.preprocessing import PolynomialFeatures
 class Regression:
     def __init__(self, state):
         self.state = state
-        self.model_scores = []
         self.regression_path = RESULTS_PATH + '\\regression\\'
 
         self.df_per_State_features = pd.read_csv(DATA_PATH + state +'.csv')
@@ -51,21 +50,11 @@ class Regression:
         lin_reg=LinearRegression(normalize=True)
         lin_reg.fit(self.train_ml_all_f,self.trainActiveCases)
         prediction_valid_linreg=lin_reg.predict(self.valid_ml_all_f)
-
-        self.model_scores.append(np.sqrt(mean_squared_error(self.validActiveCases,prediction_valid_linreg)))
-        print(self.state + ": Root Mean Square Error for Linear Regression: " + str(np.sqrt(mean_squared_error(self.validActiveCases,prediction_valid_linreg))))
-
-        #Plotting
-        plt.figure(figsize=(11,6))
+        RMSE = np.sqrt(mean_squared_error(self.validActiveCases,prediction_valid_linreg))
+        print(self.state + ": Root Mean Square Error for Linear Regression: " + str(RMSE))
         prediction_linreg=lin_reg.predict(self.ml_all_f)
-        plt.plot(self.totActiveCases,label="Active Cases")
-        plt.plot(self.df_per_State_features['Date'], prediction_linreg, linestyle='--',label="Predicted Active Cases using Linear Regression",color='black')
-        plt.xlabel('Time')
-        plt.ylabel('Active Cases')
-        plt.title("Active Cases Linear Regression Prediction")
-        plt.xticks(rotation=90)
-        plt.legend()
-        plt.savefig(self.regression_path + self.last_date + '_{state}_linear_regression.png'.format(state=self.state))
+        self.plot(prediction_linreg,'Linear')
+        return RMSE
 
     def polynomialRegression(self):
         poly_reg = PolynomialFeatures(degree = 7) 
@@ -74,46 +63,36 @@ class Regression:
         poly_reg.fit(self.train_ml_all_f,self.trainActiveCases)
         wn.filterwarnings("default")
         poly_pred = poly_reg.predict(self.valid_ml_all_f)
-
-        self.model_scores.append(np.sqrt(mean_squared_error(self.validActiveCases,poly_pred)))
-        print(self.state + ": Root Mean Square Error for Polynomial Regression: " + str(np.sqrt(mean_squared_error(self.validActiveCases,poly_pred))))
-
-        #Plotting
-        plt.figure(figsize=(11,6))
-        pred_poly=poly_reg.predict(self.ml_all_f)
-        plt.plot(self.totActiveCases,label="Active Cases")
-        plt.plot(self.df_per_State_features['Date'], pred_poly, linestyle='--',label="Predicted Active Cases using Polynomial Regression",color='black')
-        plt.xlabel('Time')
-        plt.ylabel('Active Cases')
-        plt.title("Active Cases Polynomial Regression Prediction")
-        plt.xticks(rotation=90)
-        plt.legend()
-        plt.savefig(self.regression_path + self.last_date + '_{state}_polynomial_regression.png'.format(state=self.state))
+        RMSE = np.sqrt(mean_squared_error(self.validActiveCases,poly_pred))
+        print(self.state + ": Root Mean Square Error for Polynomial Regression: " + str(RMSE))
+        pred_poly = poly_reg.predict(self.ml_all_f)
+        self.plot(pred_poly,'Polynomial')
+        return RMSE
 
     def lassoRegression(self):
         lasso_reg = Lasso(alpha=.8,normalize=True, max_iter=1e5)
         poly_reg = make_pipeline(PolynomialFeatures(3), lasso_reg)
         poly_reg.fit(self.train_ml_all_f,self.trainActiveCases)
         poly_pred = poly_reg.predict(self.valid_ml_all_f)
+        RMSE = np.sqrt(mean_squared_error(self.validActiveCases,poly_pred))
+        print(self.state + ": Root Mean Square Error for LASSO Regression: " + str(RMSE))
+        pred_poly = poly_reg.predict(self.ml_all_f)
+        self.plot(pred_poly,'LASSO')
+        return RMSE
 
-        self.model_scores.append(np.sqrt(mean_squared_error(self.validActiveCases,poly_pred)))
-        print(self.state + ": Root Mean Square Error for LASSO Regression: " + str(np.sqrt(mean_squared_error(self.validActiveCases,poly_pred))))
-
-        #Plotting
+    def plot(self,prediction,model):
         plt.figure(figsize=(11,6))
-        pred_poly=poly_reg.predict(self.ml_all_f)
         plt.plot(self.totActiveCases,label="Active Cases")
-        plt.plot(self.df_per_State_features['Date'], pred_poly, linestyle='--',label="Predicted Active Cases using LASSO Regression",color='black')
+        plt.plot(self.df_per_State_features['Date'], prediction, linestyle='--',label="Predicted Active Cases using {model} Regression".format(model=model),color='black')
+        plt.title("Active Cases {model} Regression Prediction".format(model=model))
         plt.xlabel('Time')
         plt.ylabel('Active Cases')
-        plt.title("Active Cases LASSO Regression Prediction")
         plt.xticks(rotation=90)
         plt.legend()
-        plt.savefig(self.regression_path + self.last_date + '_{state}_lasso_regression.png'.format(state=self.state))
+        plt.savefig(self.regression_path + self.last_date + '_{state}_{model}_regression.png'.format(state=self.state,model=model.lower()))
 
     def tslean(self):
         reg = TimeSeriesSVR(kernel="gak", gamma="auto")
-
         all_colms = ['Cured/Discharged/Migrated', 'Death', 'Total Confirmed cases', 'LiteracyRate', 'PopulationDensity', 'ElderlyRate',
             'DistrictsEffected', 'NoRedZones', 'NoOrangeZones', 'NoGreenZones',
             'InternationalAirports', 'IntAirportPassenger', 'StateHospitals',
@@ -134,12 +113,11 @@ class Regression:
 
         tseries_reg = reg.fit(X_train, self.trainActiveCases)
         tseries_pred = tseries_reg.predict(X_test)
-        #print(tseries_reg.support_vectors_time_series_(X_test))
-        
+        # print(tseries_reg.support_vectors_time_series_(X_test))
         # print(tseries_pred)
 
-        self.model_scores.append(np.sqrt(mean_squared_error(self.validActiveCases,tseries_pred)))
-        print("Root Mean Square Error for Tslearn Model: " + str(np.sqrt(mean_squared_error(self.validActiveCases,tseries_pred))))
+        RMSE = np.sqrt(mean_squared_error(self.validActiveCases,tseries_pred))
+        print("Root Mean Square Error for Tslearn Model: " + str(RMSE))
 
         index= pd.date_range(start=self.train_dates[0], periods=len(self.train_dates), freq='D')
         valid_index = pd.date_range(start=self.valid_dates[0], periods=len(self.valid_dates), freq='D')
@@ -158,4 +136,5 @@ class Regression:
         plt.ylabel('Active Cases')
         plt.title("Multi Input Feature Active Cases Forecasting for state " + self.state)
         plt.savefig(self.regression_path + self.last_date + '_{state}_tslean.png'.format(state=self.state))
+        return RMSE
 
