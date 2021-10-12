@@ -2,9 +2,9 @@
 - Linear Regression
 - Polynomial regression
 - Lasso regression
-- AR
-- MA
-- ARIMA
+- AR Model
+- MA Model
+- ARIMA Model
 
 <!-- - Simple and Exponential Smoothing 
 - Holt's Winter Model
