@@ -1,7 +1,7 @@
 # Prediction Tools
 - Linear Regression
 - Polynomial regression
-- Lasso
+- Lasso regression
 - AR
 - MA
 - ARIMA
