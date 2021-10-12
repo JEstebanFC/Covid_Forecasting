@@ -8,6 +8,7 @@ from Models import DATA_PATH, RESULTS_PATH
 
 from Models.Arima import Arima
 from Models.Regression import Regression
+from Models.Models import Models
 
 def activeCases(state):
     active_path = RESULTS_PATH + '\\active_cases\\'
@@ -38,13 +39,11 @@ if __name__ == "__main__":
     options, args = parser.parse_args()
     # options.state = 'Maharashtra,Kerala,Delhi'
     # options.model = 'regression'
+    options.model = options.model.split(',')
 
     states_list = open(DATA_PATH + 'States_list.csv', 'r')
     states = states_list.readline().split(',')
     states_list.close()
-    
-    models = ['regression','linear','polynomial','lasso']
-    options.model = options.model.split(',')
 
     #### Active cases ####
     if options.state.lower() == 'list':
@@ -64,22 +63,20 @@ if __name__ == "__main__":
             continue
         try:
             activeCases(state)
-            regression = Regression(state)
+            models = Models(state)
             if 'regression' in options.model or 'lasso' in options.model:
-                regression.lassoRegression()
+                models.lassoRegression()
             if 'regression' in options.model or 'linear' in options.model:
-                regression.linearRegression()
+                models.linearRegression()
             if 'regression' in options.model or 'polynomial' in options.model:
-                regression.polynomialRegression()
+                models.polynomialRegression()
             
-            arima = Arima(state)
             if 'ARIMA' in options.model or 'ar' in options.model:
-                arima.AR()
+                models.AR()
             if 'ARIMA' in options.model or 'ma' in options.model:
-                arima.MA()
+                models.MA()
             if 'ARIMA' in options.model or 'arima' in options.model:
-                arima.ARIMA()
-            
+                models.ARIMA()
         except:
             print(state + ' failed')
 

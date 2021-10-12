@@ -34,8 +34,8 @@ class color:
 class Models:
     def __init__(self, state):
         self.state = state
-        self.arima_path = RESULTS_PATH + '\\arima\\'
-        self.regression_path = RESULTS_PATH + '\\regression\\'
+        self.arima_path = RESULTS_PATH + '\\IT819\\arima\\'
+        self.regression_path = RESULTS_PATH + '\\IT819\\regression\\'
 
         self.df_per_State_features = pd.read_csv(DATA_PATH + state +'.csv')
         self.df_per_State_features = self.df_per_State_features.fillna(0)
@@ -190,7 +190,8 @@ class Models:
         plt.savefig(self.arima_path + self.last_date + '_{state}_{title}_Model.png'.format(state=self.state,title=title))
         # plot residual errors
         residuals.plot()
-        plt.savefig(self.arima_path + self.last_date + '_{state}_{title}_Model_residual_error.png'.format(state=self.state,title=title))
+        resError = self.arima_path + '\\resError\\'
+        plt.savefig(resError + self.last_date + '_{state}_{title}_Model_residual_error.png'.format(state=self.state,title=title))
         residuals.plot(kind='kde')
-        plt.savefig(self.arima_path + self.last_date + '_{state}_{title}_Model_residual_error_kde.png'.format(state=self.state,title=title))
+        plt.savefig(resError + self.last_date + '_{state}_{title}_Model_residual_error_kde.png'.format(state=self.state,title=title))
 

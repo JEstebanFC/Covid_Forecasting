@@ -2,13 +2,16 @@
 - Linear Regression
 - Polynomial regression
 - Lasso
-- Simple and Exponential Smoothing 
+- AR
+- MA
+- ARIMA
+
+<!-- - Simple and Exponential Smoothing 
 - Holt's Winter Model
 - Dickey-Fuller test
-- AR, MA and ARIMA Models
 - Facebook's Prophet Model
-- AR, MA, ARIMA, SARIMA  using VARMAX Modeling
-<!-- - Auto AR, MA, ARIMA and SARIMA Models -->
+- AR, MA, ARIMA, SARIMA using VARMAX Modeling
+- Auto AR, MA, ARIMA and SARIMA Models -->
 
 <!-- - DeepLearning:
     1. LSTM
