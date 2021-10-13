@@ -8,16 +8,10 @@ from Models import DATA_PATH,DATA_PATH_NEW, RESULTS_PATH
 
 from sklearn.pipeline import make_pipeline
 from sklearn.metrics import mean_squared_error
-from tslearn.svm import TimeSeriesSVR
 from sklearn.linear_model import Ridge, Lasso
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
-
-arima_type = 0
-if arima_type:
-    from statsmodels.tsa.arima_model import ARIMA
-else:
-    from statsmodels.tsa.arima.model import ARIMA
+from statsmodels.tsa.arima.model import ARIMA
 
 class color:
    PURPLE = '\033[95m'
@@ -62,106 +56,73 @@ class Models:
         self.valid_dates = self.df_per_State_features['Date'].iloc[int(df_per_State_sel_features.shape[0]*0.70):].values
         self.trainActiveCases = self.totActiveCases[:int(self.df_per_State_features.shape[0]*0.70)]
         self.validActiveCases = self.totActiveCases[int(self.df_per_State_features.shape[0]*0.70):]
-
         #Regression
         self.ml_all_f = df_per_State_sel_features.values
         self.train_ml_all_f = df_per_State_sel_features.iloc[:int(df_per_State_sel_features.shape[0]*0.70)].values
         self.valid_ml_all_f = df_per_State_sel_features.iloc[int(df_per_State_sel_features.shape[0]*0.70):].values
-
         #ARIMA
         self.train_index = pd.date_range(start=self.train_dates[0], periods=len(self.train_dates), freq='D')
         self.valid_index = pd.date_range(start=self.valid_dates[0], periods=len(self.valid_dates), freq='D')
         self.train_active = pd.Series(self.train_ml['Active Cases'].values, self.train_index)
         self.valid_active = pd.Series(self.valid_ml['Active Cases'].values, self.valid_index)
 
-    def linearRegression(self):
-        lin_reg=LinearRegression(normalize=True)
-        lin_reg.fit(self.train_ml_all_f,self.trainActiveCases)
-        prediction_valid_linreg=lin_reg.predict(self.valid_ml_all_f)
-        RMSE = np.sqrt(mean_squared_error(self.validActiveCases,prediction_valid_linreg))
-        print(self.state + ": Root Mean Square Error for Linear Regression: " + str(RMSE))
-        prediction_linreg=lin_reg.predict(self.ml_all_f)
-        self.plotRegression(prediction_linreg,'Linear')
-        return RMSE
-
-    def polynomialRegression(self):
-        poly_reg = PolynomialFeatures(degree = 7) 
-        poly_reg = make_pipeline(PolynomialFeatures(3), Ridge())
+    def __regression(self, regression):
         wn.filterwarnings("ignore")
-        poly_reg.fit(self.train_ml_all_f,self.trainActiveCases)
+        regression.fit(self.train_ml_all_f,self.trainActiveCases)
         wn.filterwarnings("default")
-        poly_pred = poly_reg.predict(self.valid_ml_all_f)
+        poly_pred = regression.predict(self.valid_ml_all_f)
         RMSE = np.sqrt(mean_squared_error(self.validActiveCases,poly_pred))
-        print(self.state + ": Root Mean Square Error for Polynomial Regression: " + str(RMSE))
-        pred_poly = poly_reg.predict(self.ml_all_f)
-        self.plotRegression(pred_poly,'Polynomial')
-        return RMSE
+        pred = regression.predict(self.ml_all_f)
+        return RMSE,pred
 
-    def lassoRegression(self):
-        lasso_reg = Lasso(alpha=.8,normalize=True, max_iter=1e5)
-        poly_reg = make_pipeline(PolynomialFeatures(3), lasso_reg)
-        poly_reg.fit(self.train_ml_all_f,self.trainActiveCases)
-        poly_pred = poly_reg.predict(self.valid_ml_all_f)
-        RMSE = np.sqrt(mean_squared_error(self.validActiveCases,poly_pred))
-        print(self.state + ": Root Mean Square Error for LASSO Regression: " + str(RMSE))
-        pred_poly = poly_reg.predict(self.ml_all_f)
-        self.plotRegression(pred_poly,'LASSO')
-        return RMSE
+    def regression(self, method):
+        method = method.capitalize()
+        if method.lower() == 'linear':
+            regression = LinearRegression(normalize=True)
+        elif method.lower() == 'polynomial':
+            regression = PolynomialFeatures(degree = 7) 
+            regression = make_pipeline(PolynomialFeatures(3), Ridge())
+        elif method.lower() == 'lasso':
+            lasso_reg = Lasso(alpha=.8,normalize=True, max_iter=1e5)
+            regression = make_pipeline(PolynomialFeatures(3), lasso_reg)
+        RMSE,pred = self.__regression(regression)
+        print("{state}: Root Mean Square Error for {method} Regression: {RMSE}".format(state=self.state, method=method, RMSE=str(RMSE)))
+        self.plotRegression(pred, method)
+        return RMSE,pred
 
     def AR(self):
-        if arima_type:
-            wn.filterwarnings("ignore")
-            model_ar = ARIMA(self.trainActiveCases, order=(2, 0, 0))
-            wn.filterwarnings("default")
-            model_ar_fit = model_ar.fit(disp=0)
-            prediction_ar = model_ar_fit.forecast(len(self.validActiveCases))[0]
-        else:
-            model_ar = ARIMA(self.trainActiveCases, order=(2, 0, 0))
-            model_ar_fit = model_ar.fit()
-            prediction_ar = model_ar_fit.forecast(len(self.validActiveCases))
+        model_ar = ARIMA(self.trainActiveCases, order=(2, 0, 0))
+        model_ar_fit = model_ar.fit()
+        prediction_ar = model_ar_fit.forecast(len(self.validActiveCases))
         RMSE = np.sqrt(mean_squared_error(self.validActiveCases,prediction_ar))
         print(color.BOLD + "\tRoot Mean Square Error for AR Model: " + str(RMSE) + color.END)
         pred_active = pd.Series(prediction_ar, self.valid_index)
         residuals = pd.DataFrame(model_ar_fit.resid)
-        self.plotARIMA(pred_active,residuals,'AR' + str(arima_type))
+        self.plotARIMA(pred_active,residuals,'AR')
         # print(residuals.describe())
         return pred_active,model_ar_fit,RMSE
         
     def MA(self):
-        if arima_type:
-            wn.filterwarnings("ignore")
-            model_ma = ARIMA(self.trainActiveCases, order=(0, 0, 2))
-            wn.filterwarnings("default")
-            model_ma_fit = model_ma.fit(disp=0)  
-            prediction_ma = model_ma_fit.forecast(len(self.validActiveCases))[0]
-        else:
-            model_ma = ARIMA(self.trainActiveCases, order=(0, 0, 2))
-            model_ma_fit = model_ma.fit()
-            prediction_ma = model_ma_fit.forecast(len(self.validActiveCases))
+        model_ma = ARIMA(self.trainActiveCases, order=(0, 0, 2))
+        model_ma_fit = model_ma.fit()
+        prediction_ma = model_ma_fit.forecast(len(self.validActiveCases))
         RMSE = np.sqrt(mean_squared_error(self.validActiveCases,prediction_ma))
         print(color.BOLD + "\tRoot Mean Square Error for MA Model: " + str(RMSE) + color.END)
         pred_active = pd.Series(prediction_ma, self.valid_index)
         residuals = pd.DataFrame(model_ma_fit.resid)
-        self.plotARIMA(pred_active,residuals,'MA' + str(arima_type))
+        self.plotARIMA(pred_active,residuals,'MA')
         # print(residuals.describe())
         return pred_active,model_ma_fit,RMSE
 
     def ARIMA(self):
-        if arima_type:
-            wn.filterwarnings("ignore")
-            model_arima = ARIMA(self.trainActiveCases, order=(1, 1, 1))
-            wn.filterwarnings("default")
-            model_arima_fit = model_arima.fit(disp=0)  
-            prediction_arima = model_arima_fit.forecast(len(self.validActiveCases))[0]
-        else:
-            model_arima = ARIMA(self.trainActiveCases, order=(1, 1, 1))
-            model_arima_fit = model_arima.fit()
-            prediction_arima = model_arima_fit.forecast(len(self.validActiveCases))
+        model_arima = ARIMA(self.trainActiveCases, order=(1, 1, 1))
+        model_arima_fit = model_arima.fit()
+        prediction_arima = model_arima_fit.forecast(len(self.validActiveCases))
         RMSE = np.sqrt(mean_squared_error(self.validActiveCases,prediction_arima))
         print(color.BOLD + "\tRoot Mean Square Error for ARIMA Model: " + str(RMSE) + color.END)
         pred_active = pd.Series(prediction_arima, self.valid_index)
         residuals = pd.DataFrame(model_arima_fit.resid)
-        self.plotARIMA(pred_active,residuals,'ARIMA' + str(arima_type))
+        self.plotARIMA(pred_active,residuals,'ARIMA')
         # print(residuals.describe())
         # self.valid_ml["ARIMA Model Prediction"] = list(np.exp(prediction_arima))
         return pred_active,model_arima_fit,RMSE
