@@ -86,46 +86,31 @@ class Models:
             lasso_reg = Lasso(alpha=.8,normalize=True, max_iter=1e5)
             regression = make_pipeline(PolynomialFeatures(3), lasso_reg)
         RMSE,pred = self.__regression(regression)
-        print("{state}: Root Mean Square Error for {method} Regression: {RMSE}".format(state=self.state, method=method, RMSE=str(RMSE)))
+        print(color.BOLD + "\t{state}: Root Mean Square Error for {method} Regression: {RMSE}".format(state=self.state, method=method, RMSE=str(RMSE)) + color.END)
         self.plotRegression(pred, method)
-        return RMSE,pred
+        return RMSE, pred
 
-    def AR(self):
-        model_ar = ARIMA(self.trainActiveCases, order=(2, 0, 0))
-        model_ar_fit = model_ar.fit()
-        prediction_ar = model_ar_fit.forecast(len(self.validActiveCases))
-        RMSE = np.sqrt(mean_squared_error(self.validActiveCases,prediction_ar))
-        print(color.BOLD + "\tRoot Mean Square Error for AR Model: " + str(RMSE) + color.END)
-        pred_active = pd.Series(prediction_ar, self.valid_index)
-        residuals = pd.DataFrame(model_ar_fit.resid)
-        self.plotARIMA(pred_active,residuals,'AR')
-        # print(residuals.describe())
-        return pred_active,model_ar_fit,RMSE
-        
-    def MA(self):
-        model_ma = ARIMA(self.trainActiveCases, order=(0, 0, 2))
-        model_ma_fit = model_ma.fit()
-        prediction_ma = model_ma_fit.forecast(len(self.validActiveCases))
-        RMSE = np.sqrt(mean_squared_error(self.validActiveCases,prediction_ma))
-        print(color.BOLD + "\tRoot Mean Square Error for MA Model: " + str(RMSE) + color.END)
-        pred_active = pd.Series(prediction_ma, self.valid_index)
-        residuals = pd.DataFrame(model_ma_fit.resid)
-        self.plotARIMA(pred_active,residuals,'MA')
-        # print(residuals.describe())
-        return pred_active,model_ma_fit,RMSE
+    def __ARIMA(self, model):
+        model_fit = model.fit()
+        prediction = model_fit.forecast(len(self.validActiveCases))
+        RMSE = np.sqrt(mean_squared_error(self.validActiveCases,prediction))
+        pred_active = pd.Series(prediction, self.valid_index)
+        residuals = pd.DataFrame(model_fit.resid)
+        return RMSE, pred_active, residuals
 
-    def ARIMA(self):
-        model_arima = ARIMA(self.trainActiveCases, order=(1, 1, 1))
-        model_arima_fit = model_arima.fit()
-        prediction_arima = model_arima_fit.forecast(len(self.validActiveCases))
-        RMSE = np.sqrt(mean_squared_error(self.validActiveCases,prediction_arima))
-        print(color.BOLD + "\tRoot Mean Square Error for ARIMA Model: " + str(RMSE) + color.END)
-        pred_active = pd.Series(prediction_arima, self.valid_index)
-        residuals = pd.DataFrame(model_arima_fit.resid)
-        self.plotARIMA(pred_active,residuals,'ARIMA')
+    def ARIMA(self, method):
+        method = method.upper()
+        if method == 'AR':
+            model = ARIMA(self.trainActiveCases, order=(2, 0, 0))
+        elif method == 'MA':
+            model = ARIMA(self.trainActiveCases, order=(0, 0, 2))
+        elif method == 'ARIMA':
+            model = ARIMA(self.trainActiveCases, order=(1, 1, 1))
+        RMSE,pred_active,residuals = self.__ARIMA(model)
+        print(color.BOLD + "\t{state}: Root Mean Square Error for {method} Model: {RMSE}".format(state=self.state, method=method, RMSE=str(RMSE)) + color.END)
         # print(residuals.describe())
-        # self.valid_ml["ARIMA Model Prediction"] = list(np.exp(prediction_arima))
-        return pred_active,model_arima_fit,RMSE
+        self.plotARIMA(pred_active,residuals,method)
+        return RMSE, pred_active
 
     def plotRegression(self,prediction,model):
         plt.figure(figsize=(11,6))

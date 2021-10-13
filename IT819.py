@@ -65,17 +65,17 @@ if __name__ == "__main__":
             activeCases(state)
             models = Models(state)
             if 'regression' in options.model or 'lasso' in options.model:
-                models.lassoRegression()
+                models.regression('lasso')
             if 'regression' in options.model or 'linear' in options.model:
-                models.linearRegression()
+                models.regression('linear')
             if 'regression' in options.model or 'polynomial' in options.model:
-                models.polynomialRegression()
+                models.regression('polynomial')
             if 'ARIMA' in options.model or 'ar' in options.model:
-                models.AR()
+                models.ARIMA('AR')
             if 'ARIMA' in options.model or 'ma' in options.model:
-                models.MA()
+                models.ARIMA('MA')
             if 'ARIMA' in options.model or 'arima' in options.model:
-                models.ARIMA()
+                models.ARIMA('ARIMA')
         except:
             print(state + ' failed')
 
