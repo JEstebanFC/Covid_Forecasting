@@ -64,7 +64,6 @@ class CovidDB:
         L = len(confirmed_cases.columns)
         for i in range(start_index, L-1):
             dailyCases[confirmed_cases.columns[i+1]] = confirmed_cases[confirmed_cases.columns[i+1]] - confirmed_cases[confirmed_cases.columns[i]]
-        fileName = DATA_PATH_NEW + 'AllCases.csv'
-        print('Data saved in:', fileName)
-        dailyCases.to_csv(fileName)
+        
+        return dailyCases
 

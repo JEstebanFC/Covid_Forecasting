@@ -2,6 +2,7 @@
 from optparse import OptionParser
 
 from Utils.CovidDB import CovidDB
+from Models import DATA_PATH_NEW, RESULTS_PATH
 
 
 if __name__ == "__main__":
@@ -16,6 +17,9 @@ if __name__ == "__main__":
     options.country = options.country.split(',')
     
     covidDB = CovidDB()
-    covidDB.newCasesReport(options.country)
+    dailyCases = covidDB.newCasesReport(options.country)
+    fileName = DATA_PATH_NEW + 'AllCases.csv'
+    print('Data saved in:', fileName)
+    dailyCases.to_csv(fileName)
     # for country in options.country:
     #     newCases,deathCases,recoverCases = covidDB.countryCases(country,options.date)
