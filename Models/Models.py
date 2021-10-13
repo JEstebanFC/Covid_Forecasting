@@ -140,4 +140,3 @@ class Models:
         plt.savefig(resError + self.last_date + '_{state}_{title}_Model_residual_error.png'.format(state=self.state,title=title))
         residuals.plot(kind='kde')
         plt.savefig(resError + self.last_date + '_{state}_{title}_Model_residual_error_kde.png'.format(state=self.state,title=title))
-
