@@ -78,4 +78,3 @@ if __name__ == "__main__":
                 models.ARIMA('ARIMA')
         except:
             print(state + ' failed')
-
