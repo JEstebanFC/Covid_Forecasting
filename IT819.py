@@ -70,7 +70,6 @@ if __name__ == "__main__":
                 models.linearRegression()
             if 'regression' in options.model or 'polynomial' in options.model:
                 models.polynomialRegression()
-            
             if 'ARIMA' in options.model or 'ar' in options.model:
                 models.AR()
             if 'ARIMA' in options.model or 'ma' in options.model:

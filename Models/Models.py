@@ -4,7 +4,7 @@ import warnings as wn
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
 
-from Models import DATA_PATH, RESULTS_PATH
+from Models import DATA_PATH,DATA_PATH_NEW, RESULTS_PATH
 
 from sklearn.pipeline import make_pipeline
 from sklearn.metrics import mean_squared_error

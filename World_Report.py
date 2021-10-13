@@ -16,5 +16,6 @@ if __name__ == "__main__":
     options.country = options.country.split(',')
     
     covidDB = CovidDB()
-    for country in options.country:
-        dailyCases = covidDB.countryCases(country,options.date)
+    covidDB.newCasesReport(options.country)
+    # for country in options.country:
+    #     newCases,deathCases,recoverCases = covidDB.countryCases(country,options.date)

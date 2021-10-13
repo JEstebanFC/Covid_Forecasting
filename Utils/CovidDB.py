@@ -2,9 +2,7 @@ import pandas as pd
 
 from datetime import datetime, timedelta
 
-# nz = c.loc[c[c.columns[1]] == 'New Zealand']
-# nz[nz.columns[-1]].iloc[-1] - nz[nz.columns[-2]].iloc[-1]
-# nz.iloc[-1,-1] - nz.iloc[-1,-2]
+from Models import DATA_PATH_NEW, RESULTS_PATH
 
 class color:
    PURPLE = '\033[95m'
@@ -57,4 +55,16 @@ class CovidDB:
         print(color.BOLD  + 'Cases on {date}:'.format(country=country,lastDate=lastDate,date=date) + color.END)
         print(result.to_string(),'\n')
         return daily_confirmed_cases,daily_death_cases,daily_recover_cases
+
+    def newCasesReport(self, countries):
+        start_index = 3
+        statesColumn = self.confirmed.columns[0]
+        confirmed_cases = self.confirmed.loc[countries]
+        dailyCases = confirmed_cases[[statesColumn]].copy()
+        L = len(confirmed_cases.columns)
+        for i in range(start_index, L-1):
+            dailyCases[confirmed_cases.columns[i+1]] = confirmed_cases[confirmed_cases.columns[i+1]] - confirmed_cases[confirmed_cases.columns[i]]
+        fileName = DATA_PATH_NEW + 'AllCases.csv'
+        print('Data saved in:', fileName)
+        dailyCases.to_csv(fileName)
 
