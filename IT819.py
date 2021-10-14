@@ -69,19 +69,30 @@ if __name__ == "__main__":
 
     RMSE = pd.DataFrame(columns=options_models, index=options.state)
     RMSE.index.name = 'States'
+    MAE = pd.DataFrame(columns=options_models, index=options.state)
+    MAE.index.name = 'States'
     for state in options.state:
         if state not in states:
             print(state + ' is not available')
             continue
+        # try:
         activeCases(state)
         models = Models(state)
         rmse = {}
+        mae = {}
         for model in options_models:
             if model in arima_models:
                 errors,pred = models.ARIMA(model)
             if model in regression_models:
                 errors,pred = models.regression(model)
-            rmse[model] = errors
+            rmse[model] = errors[0]
+            mae[model] = errors[1]
         RMSE.loc[state] = rmse
-    print()
+        MAE.loc[state] = mae
+        # except:
+        #     print(state + ' failed')
+    print('\nRMSE')
     print(RMSE.to_string())
+    print('\nMAE')
+    print(MAE.to_string())
+    print()

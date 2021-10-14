@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 from Models import DATA_PATH,DATA_PATH_NEW, RESULTS_PATH
 
 from sklearn.pipeline import make_pipeline
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error as mse
+from sklearn.metrics import mean_absolute_error as mae
 from sklearn.linear_model import Ridge, Lasso
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
@@ -71,9 +72,10 @@ class Models:
         regression.fit(self.train_ml_all_f,self.trainActiveCases)
         wn.filterwarnings("default")
         poly_pred = regression.predict(self.valid_ml_all_f)
-        RMSE = np.sqrt(mean_squared_error(self.validActiveCases,poly_pred))
+        RMSE = np.sqrt(mse(self.validActiveCases,poly_pred))
+        MAE = mae(self.validActiveCases,poly_pred)
         pred = regression.predict(self.ml_all_f)
-        return RMSE,pred
+        return [RMSE,MAE],pred
 
     def regression(self, method):
         method = method.capitalize()
@@ -85,17 +87,18 @@ class Models:
         elif method.lower() == 'lasso':
             lasso_reg = Lasso(alpha=.8,normalize=True, max_iter=1e5)
             regression = make_pipeline(PolynomialFeatures(3), lasso_reg)
-        RMSE,pred = self.__regression(regression)
+        errors,pred = self.__regression(regression)
         self.plotRegression(pred, method)
-        return RMSE, pred
+        return errors, pred
 
     def __ARIMA(self, model):
         model_fit = model.fit()
         prediction = model_fit.forecast(len(self.validActiveCases))
-        RMSE = np.sqrt(mean_squared_error(self.validActiveCases,prediction))
+        RMSE = np.sqrt(mse(self.validActiveCases,prediction))
+        MAE = mae(self.validActiveCases,prediction)
         pred = pd.Series(prediction, self.valid_index)
         residuals = pd.DataFrame(model_fit.resid)
-        return RMSE, pred, residuals
+        return [RMSE,MAE], pred, residuals
 
     def ARIMA(self, method):
         method = method.upper()
@@ -105,9 +108,9 @@ class Models:
             model = ARIMA(self.trainActiveCases, order=(0, 0, 2))
         elif method == 'ARIMA':
             model = ARIMA(self.trainActiveCases, order=(1, 1, 1))
-        RMSE,pred,residuals = self.__ARIMA(model)
+        errors,pred,residuals = self.__ARIMA(model)
         self.plotARIMA(pred,residuals,method)
-        return RMSE, pred
+        return errors, pred
 
     def plotRegression(self,prediction,model):
         plt.figure(figsize=(11,6))
