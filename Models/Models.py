@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import datetime as dt
 import warnings as wn
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
@@ -66,6 +67,28 @@ class Models:
         self.valid_index = pd.date_range(start=self.valid_dates[0], periods=len(self.valid_dates), freq='D')
         self.train_active = pd.Series(self.train_ml['Active Cases'].values, self.train_index)
         self.valid_active = pd.Series(self.valid_ml['Active Cases'].values, self.valid_index)
+
+    def activeCases(self):
+        active_path = RESULTS_PATH + '\\IT819\\active_cases\\'
+        df_per_State_features = pd.read_csv(DATA_PATH + self.state +'.csv')
+        df_per_State_features = df_per_State_features.fillna(0)
+        df_per_State_features["Active Cases"].replace({0:1}, inplace=True)
+        df_state_recs = df_per_State_features
+        last_date = df_state_recs['Date'].values[-1]
+
+        df_per_State_features = df_state_recs
+        data = df_per_State_features['Active Cases'].astype('double').values
+        daterange = df_per_State_features['Date'].values
+        date_index = pd.date_range(start=daterange[0], end=daterange[-1], freq='D')
+        activecases = pd.Series(data, date_index)
+
+        f, ax = plt.subplots(1,1, figsize=(12,10))
+        plt.plot(activecases)
+        ax.set_ylabel("No of Active Covid-19 Cases")
+        title = 'Active case History for ' + self.state
+        ax.set_title(title)
+        ax.set_xlim([dt.date(2020, 3, 1), dt.date(2020, 5, 1)])
+        plt.savefig(active_path + last_date + '_{state}_active_cases.png'.format(state=self.state))
 
     def __regression(self, regression):
         wn.filterwarnings("ignore")
