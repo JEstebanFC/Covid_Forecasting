@@ -86,7 +86,6 @@ class Models:
             lasso_reg = Lasso(alpha=.8,normalize=True, max_iter=1e5)
             regression = make_pipeline(PolynomialFeatures(3), lasso_reg)
         RMSE,pred = self.__regression(regression)
-        print(color.BOLD + "\t{state}: Root Mean Square Error for {method} Regression: {RMSE}".format(state=self.state, method=method, RMSE=str(RMSE)) + color.END)
         self.plotRegression(pred, method)
         return RMSE, pred
 
@@ -94,9 +93,9 @@ class Models:
         model_fit = model.fit()
         prediction = model_fit.forecast(len(self.validActiveCases))
         RMSE = np.sqrt(mean_squared_error(self.validActiveCases,prediction))
-        pred_active = pd.Series(prediction, self.valid_index)
+        pred = pd.Series(prediction, self.valid_index)
         residuals = pd.DataFrame(model_fit.resid)
-        return RMSE, pred_active, residuals
+        return RMSE, pred, residuals
 
     def ARIMA(self, method):
         method = method.upper()
@@ -106,11 +105,9 @@ class Models:
             model = ARIMA(self.trainActiveCases, order=(0, 0, 2))
         elif method == 'ARIMA':
             model = ARIMA(self.trainActiveCases, order=(1, 1, 1))
-        RMSE,pred_active,residuals = self.__ARIMA(model)
-        print(color.BOLD + "\t{state}: Root Mean Square Error for {method} Model: {RMSE}".format(state=self.state, method=method, RMSE=str(RMSE)) + color.END)
-        # print(residuals.describe())
-        self.plotARIMA(pred_active,residuals,method)
-        return RMSE, pred_active
+        RMSE,pred,residuals = self.__ARIMA(model)
+        self.plotARIMA(pred,residuals,method)
+        return RMSE, pred
 
     def plotRegression(self,prediction,model):
         plt.figure(figsize=(11,6))
@@ -123,20 +120,20 @@ class Models:
         plt.legend()
         plt.savefig(self.regression_path + self.last_date + '_{state}_{model}_regression.png'.format(state=self.state,model=model.lower()))
 
-    def plotARIMA(self,pred_active,residuals,title):
+    def plotARIMA(self,prediction,residuals,title):
         # Plotting
         f, ax = plt.subplots(1,1 , figsize=(12,10))
         plt.plot(self.train_active, marker='o',color='blue',label ="Train Data Set")
         plt.plot(self.valid_active, marker='o',color='green',label ="Valid Data Set")
-        plt.plot(pred_active, marker='o',color='red',label ="Predicted " + title)
+        plt.plot(prediction, marker='o',color='red',label ="Predicted " + title)
         plt.legend()
         plt.xlabel("Date Time")
         plt.ylabel('Active Cases')
         plt.title("Active Cases {title} Model Forecasting for state {state}".format(state=self.state,title=title))
-        plt.savefig(self.arima_path + self.last_date + '_{state}_{title}_Model.png'.format(state=self.state,title=title))
+        plt.savefig(self.arima_path + self.last_date + '_{state}_{title}.png'.format(state=self.state,title=title))
         # plot residual errors
         residuals.plot()
         resError = self.arima_path + '\\resError\\'
-        plt.savefig(resError + self.last_date + '_{state}_{title}_Model_residual_error.png'.format(state=self.state,title=title))
+        plt.savefig(resError + self.last_date + '_{state}_{title}_residual_error.png'.format(state=self.state,title=title))
         residuals.plot(kind='kde')
-        plt.savefig(resError + self.last_date + '_{state}_{title}_Model_residual_error_kde.png'.format(state=self.state,title=title))
+        plt.savefig(resError + self.last_date + '_{state}_{title}_residual_error_kde.png'.format(state=self.state,title=title))
