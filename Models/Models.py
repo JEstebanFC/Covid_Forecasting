@@ -5,9 +5,12 @@ import warnings as wn
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
 
+from Utils.CovidDB import CovidDB
+
 from Models import DATA_PATH,DATA_PATH_NEW, RESULTS_PATH
 
 from sklearn.pipeline import make_pipeline
+from sklearn.metrics import r2_score
 from sklearn.metrics import mean_squared_error as mse
 from sklearn.metrics import mean_absolute_error as mae
 from sklearn.linear_model import Ridge, Lasso
@@ -31,9 +34,10 @@ class Models:
     def __init__(self, state):
         self.state = state
         self.arima_path = RESULTS_PATH + '\\IT819\\arima\\'
+        self.active_path = RESULTS_PATH + '\\IT819\\active_cases\\'
         self.regression_path = RESULTS_PATH + '\\IT819\\regression\\'
 
-        self.df_per_State_features = pd.read_csv(DATA_PATH + state +'.csv')
+        self.df_per_State_features = pd.read_csv(DATA_PATH + self.state + '.csv')
         self.df_per_State_features = self.df_per_State_features.fillna(0)
         self.df_per_State_features["Active Cases"].replace({0:1}, inplace=True)
 
@@ -41,8 +45,8 @@ class Models:
         daterange = self.df_per_State_features['Date'].values
         self.last_date = daterange[-1]
         date_index = pd.date_range(start=daterange[0], end=daterange[-1], freq='D')
-        activecases = pd.Series(data, date_index)
-        self.totActiveCases = activecases.values.reshape(-1,1)
+        self.activecases = pd.Series(data, date_index)
+        self.totActiveCases = self.activecases.values.reshape(-1,1)
 
         df_per_State_sel_features = self.df_per_State_features.copy(deep=False)
         df_per_State_sel_features["Days Since"] = date_index - date_index[0]
@@ -68,37 +72,33 @@ class Models:
         self.train_active = pd.Series(self.train_ml['Active Cases'].values, self.train_index)
         self.valid_active = pd.Series(self.valid_ml['Active Cases'].values, self.valid_index)
 
-    def activeCases(self):
-        active_path = RESULTS_PATH + '\\IT819\\active_cases\\'
-        df_per_State_features = pd.read_csv(DATA_PATH + self.state +'.csv')
-        df_per_State_features = df_per_State_features.fillna(0)
-        df_per_State_features["Active Cases"].replace({0:1}, inplace=True)
-        df_state_recs = df_per_State_features
-        last_date = df_state_recs['Date'].values[-1]
-
-        df_per_State_features = df_state_recs
-        data = df_per_State_features['Active Cases'].astype('double').values
-        daterange = df_per_State_features['Date'].values
-        date_index = pd.date_range(start=daterange[0], end=daterange[-1], freq='D')
-        activecases = pd.Series(data, date_index)
-
+    def getDailyCases(self):
+        covidDB = CovidDB()
+        self.dailyCases = covidDB.newCasesReport(self.state)
+    
+    def plotActiveCases(self):
         f, ax = plt.subplots(1,1, figsize=(12,10))
-        plt.plot(activecases)
-        ax.set_ylabel("No of Active Covid-19 Cases")
+        plt.plot(self.activecases)
         title = 'Active case History for ' + self.state
         ax.set_title(title)
+        ax.set_ylabel("No of Active Covid-19 Cases")
         ax.set_xlim([dt.date(2020, 3, 1), dt.date(2020, 5, 1)])
-        plt.savefig(active_path + last_date + '_{state}_active_cases.png'.format(state=self.state))
+        plt.savefig(self.active_path + self.last_date + '_{state}_active_cases.png'.format(state=self.state))
 
+    def __errors(self,activeCases,prediction):
+        RMSE = np.sqrt(mse(activeCases,prediction))
+        MAE = mae(activeCases,prediction)
+        R2 = r2_score(activeCases,prediction)
+        return [RMSE,MAE,R2]
+    
     def __regression(self, regression):
         wn.filterwarnings("ignore")
         regression.fit(self.train_ml_all_f,self.trainActiveCases)
         wn.filterwarnings("default")
-        poly_pred = regression.predict(self.valid_ml_all_f)
-        RMSE = np.sqrt(mse(self.validActiveCases,poly_pred))
-        MAE = mae(self.validActiveCases,poly_pred)
+        prediction = regression.predict(self.valid_ml_all_f)
+        errors = self.__errors(self.validActiveCases,prediction)
         pred = regression.predict(self.ml_all_f)
-        return [RMSE,MAE],pred
+        return errors,pred
 
     def regression(self, method):
         method = method.capitalize()
@@ -117,11 +117,10 @@ class Models:
     def __ARIMA(self, model):
         model_fit = model.fit()
         prediction = model_fit.forecast(len(self.validActiveCases))
-        RMSE = np.sqrt(mse(self.validActiveCases,prediction))
-        MAE = mae(self.validActiveCases,prediction)
+        errors = self.__errors(self.validActiveCases,prediction)
         pred = pd.Series(prediction, self.valid_index)
         residuals = pd.DataFrame(model_fit.resid)
-        return [RMSE,MAE], pred, residuals
+        return errors, pred, residuals
 
     def ARIMA(self, method):
         method = method.upper()
@@ -146,20 +145,20 @@ class Models:
         plt.legend()
         plt.savefig(self.regression_path + self.last_date + '_{state}_{model}_regression.png'.format(state=self.state,model=model.lower()))
 
-    def plotARIMA(self,prediction,residuals,title):
+    def plotARIMA(self,prediction,residuals,model):
         # Plotting
         f, ax = plt.subplots(1,1 , figsize=(12,10))
         plt.plot(self.train_active, marker='o',color='blue',label ="Train Data Set")
         plt.plot(self.valid_active, marker='o',color='green',label ="Valid Data Set")
-        plt.plot(prediction, marker='o',color='red',label ="Predicted " + title)
+        plt.plot(prediction, marker='o',color='red',label ="Predicted " + model)
         plt.legend()
         plt.xlabel("Date Time")
         plt.ylabel('Active Cases')
-        plt.title("Active Cases {title} Model Forecasting for state {state}".format(state=self.state,title=title))
-        plt.savefig(self.arima_path + self.last_date + '_{state}_{title}.png'.format(state=self.state,title=title))
+        plt.title("Active Cases {model} Model Forecasting for state {state}".format(state=self.state,model=model))
+        plt.savefig(self.arima_path + self.last_date + '_{state}_{model}.png'.format(state=self.state,model=model))
         # plot residual errors
         residuals.plot()
         resError = self.arima_path + '\\resError\\'
-        plt.savefig(resError + self.last_date + '_{state}_{title}_residual_error.png'.format(state=self.state,title=title))
+        plt.savefig(resError + self.last_date + '_{state}_{model}_residual_error.png'.format(state=self.state,model=model))
         residuals.plot(kind='kde')
-        plt.savefig(resError + self.last_date + '_{state}_{title}_residual_error_kde.png'.format(state=self.state,title=title))
+        plt.savefig(resError + self.last_date + '_{state}_{model}_residual_error_kde.png'.format(state=self.state,model=model))
