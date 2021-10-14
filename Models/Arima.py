@@ -113,6 +113,7 @@ class Arima:
             prediction_arima = model_arima_fit.forecast(len(self.validActiveCases))
         RMSE = np.sqrt(mean_squared_error(self.validActiveCases,prediction_arima))
         print(color.BOLD + "\tRoot Mean Square Error for ARIMA Model: " + str(RMSE) + color.END)
+        # print(color.BOLD + "\t{state}: Root Mean Square Error for {method} Model: {RMSE}".format(state=self.state, method=method, RMSE=str(RMSE)) + color.END)
         pred_active = pd.Series(prediction_arima, self.valid_index)
         residuals = pd.DataFrame(model_arima_fit.resid)
         self.plot(pred_active,residuals,'ARIMA' + str(arima_type))
