@@ -6,8 +6,6 @@ import matplotlib.pyplot as plt
 from optparse import OptionParser
 from Models import DATA_PATH, RESULTS_PATH
 
-from Models.Arima import Arima
-from Models.Regression import Regression
 from Models.Models import Models
 
 def activeCases(state):
@@ -37,14 +35,13 @@ if __name__ == "__main__":
     parser.add_option('-m', '--model', dest='model', default='')
     parser.add_option('-s', '--state', dest='state', default='list')
     options, args = parser.parse_args()
-    # options.state = 'Maharashtra,Kerala,Delhi'
-    # options.model = 'regression'
-    options.model = options.model.split(',')
-
+    opts_models = []
+    for om in options.model.split(','):
+        opts_models.append(om.lower())
+    
     states_list = open(DATA_PATH + 'States_list.csv', 'r')
     states = states_list.readline().split(',')
     states_list.close()
-
     #### Active cases ####
     if options.state.lower() == 'list':
         for st in states:
@@ -57,24 +54,34 @@ if __name__ == "__main__":
     else:
         options.state = options.state.split(',')
     
+    options_models = []
+    arima_models = ['ar','ma','arima']
+    regression_models = ['linear','polynomial','lasso']
+    if 'arimas' in opts_models:
+        options_models.extend(arima_models)
+    if 'regression' in opts_models:
+        options_models.extend(regression_models)
+    for model in opts_models:
+        if model in options_models:
+            continue
+        if model in regression_models or model in arima_models:
+            options_models.append(model)
+
+    RMSE = pd.DataFrame(columns=options_models, index=options.state)
+    RMSE.index.name = 'States'
     for state in options.state:
         if state not in states:
             print(state + ' is not available')
             continue
-        try:
-            activeCases(state)
-            models = Models(state)
-            if 'regression' in options.model or 'lasso' in options.model:
-                models.regression('lasso')
-            if 'regression' in options.model or 'linear' in options.model:
-                models.regression('linear')
-            if 'regression' in options.model or 'polynomial' in options.model:
-                models.regression('polynomial')
-            if 'ARIMA' in options.model or 'ar' in options.model:
-                models.ARIMA('AR')
-            if 'ARIMA' in options.model or 'ma' in options.model:
-                models.ARIMA('MA')
-            if 'ARIMA' in options.model or 'arima' in options.model:
-                models.ARIMA('ARIMA')
-        except:
-            print(state + ' failed')
+        activeCases(state)
+        models = Models(state)
+        rmse = {}
+        for model in options_models:
+            if model in arima_models:
+                errors,pred = models.ARIMA(model)
+            if model in regression_models:
+                errors,pred = models.regression(model)
+            rmse[model] = errors
+        RMSE.loc[state] = rmse
+    print()
+    print(RMSE.to_string())
