@@ -31,13 +31,11 @@ class color:
    END = '\033[0m'
 
 class Models:
-    def __init__(self, state):
-        self.state = state
-        self.arima_path = RESULTS_PATH + 'IT819\\arima\\'
-        self.active_path = RESULTS_PATH + 'IT819\\active_cases\\'
-        self.regression_path = RESULTS_PATH + 'IT819\\regression\\'
+    def __init__(self, country):
+        self.country = country
+        self.results_path = RESULTS_PATH + 'IT819\\'
 
-        self.df_per_State_features = pd.read_csv(DATA_PATH + self.state + '.csv')
+        self.df_per_State_features = pd.read_csv(DATA_PATH + self.country + '.csv')
         self.df_per_State_features = self.df_per_State_features.fillna(0)
         self.df_per_State_features["Active Cases"].replace({0:1}, inplace=True)
 
@@ -74,10 +72,7 @@ class Models:
 
     def getDailyCases(self):
         covidDB = CovidDB()
-        method = ''
-        if self.state == 'New Zealand':
-            method = 'nan'
-        self.dailyCases = covidDB.newCasesByCountry(self.state,method)
+        self.dailyCases = covidDB.newDailyCasesCountries(self.country)
     
     def __errors(self,activeCases,prediction):
         RMSE = np.sqrt(mse(activeCases,prediction))
@@ -131,11 +126,11 @@ class Models:
     def plotActiveCases(self):
         f, ax = plt.subplots(1,1, figsize=(12,10))
         plt.plot(self.activecases)
-        title = 'Active case History for ' + self.state
+        title = 'Active case History for ' + self.country
         ax.set_title(title)
         ax.set_ylabel("No of Active Covid-19 Cases")
         ax.set_xlim([dt.date(2020, 3, 1), dt.date(2020, 5, 1)])
-        plt.savefig(self.active_path + self.last_date + '_{state}_active_cases.png'.format(state=self.state))
+        plt.savefig(self.results_path + 'active_cases\\' + self.last_date + '_{country}_active_cases.png'.format(country=self.country))
 
     def plotRegression(self,prediction,model):
         plt.figure(figsize=(11,6))
@@ -146,7 +141,7 @@ class Models:
         plt.ylabel('Active Cases')
         plt.xticks(rotation=90)
         plt.legend()
-        plt.savefig(self.regression_path + self.last_date + '_{state}_{model}_regression.png'.format(state=self.state,model=model.lower()))
+        plt.savefig(self.results_path + 'regression\\' + self.last_date + '_{country}_{model}_regression.png'.format(country=self.country,model=model.lower()))
 
     def plotARIMA(self,prediction,residuals,model):
         # Plotting
@@ -157,11 +152,11 @@ class Models:
         plt.legend()
         plt.xlabel("Date Time")
         plt.ylabel('Active Cases')
-        plt.title("Active Cases {model} Model Forecasting for state {state}".format(state=self.state,model=model))
-        plt.savefig(self.arima_path + self.last_date + '_{state}_{model}.png'.format(state=self.state,model=model))
+        plt.title("Active Cases {model} Model Forecasting for {country}".format(country=self.country,model=model))
+        plt.savefig(self.results_path + 'arima\\' + self.last_date + '_{country}_{model}.png'.format(country=self.country,model=model))
         # plot residual errors
         residuals.plot()
-        resError = self.arima_path + '\\resError\\'
-        plt.savefig(resError + self.last_date + '_{state}_{model}_residual_error.png'.format(state=self.state,model=model))
+        resError = self.results_path + 'arima\\resError\\'
+        plt.savefig(resError + self.last_date + '_{country}_{model}_residual_error.png'.format(country=self.country,model=model))
         residuals.plot(kind='kde')
-        plt.savefig(resError + self.last_date + '_{state}_{model}_residual_error_kde.png'.format(state=self.state,model=model))
+        plt.savefig(resError + self.last_date + '_{country}_{model}_residual_error_kde.png'.format(country=self.country,model=model))
