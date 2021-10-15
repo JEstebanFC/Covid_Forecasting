@@ -58,20 +58,6 @@ class CovidDB:
         print(result.to_string(),'\n')
         return daily_confirmed_cases,daily_death_cases,daily_recover_cases
 
-    def newCasesReport(self, countries):
-        '''Desgin to return a report with the new daily cases of a
-        country, showing the states when this data is available
-        '''
-        start_index = 3
-        statesColumn = self.confirmed.columns[0]
-        confirmed_cases = self.confirmed.loc[countries]
-        dailyCases = confirmed_cases[[statesColumn]].copy()
-        L = len(confirmed_cases.columns)
-        for i in range(start_index, L-1):
-            dailyCases[confirmed_cases.columns[i+1]] = confirmed_cases[confirmed_cases.columns[i+1]] - confirmed_cases[confirmed_cases.columns[i]]
-        
-        return dailyCases
-    
     def newCasesCountries(self, countries):
         '''
         Return the accumulative cases
@@ -88,17 +74,4 @@ class CovidDB:
         dailyCases = accumulativeCases.drop(['Province/State'],axis=1).diff(axis=1)
         return dailyCases
 
-    def newCasesByCountry(self, country, method = ''):
-        '''Design to return the new daily cases from a country, where 
-        is considered the sum of all the states.
-        '''
-        confirmed_cases = self.confirmed.loc[country]
-        if type(confirmed_cases) == pd.core.frame.DataFrame:
-            print('There are multiple states in {c}'.format(c=country))
-            if method.lower() == 'nan':
-                confirmed_cases = confirmed_cases[confirmed_cases['Province/State'].isna()]
-            confirmed_cases = confirmed_cases.drop(columns=['Province/State']).sum()
-        dailyCases = confirmed_cases.diff()
-        
-        return dailyCases
 
