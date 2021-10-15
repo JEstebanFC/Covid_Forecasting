@@ -28,8 +28,10 @@ class CovidDB:
         self.deaths = pd.read_csv(url_deaths, index_col=1)
         self.recovered = pd.read_csv(url_recovered, index_col=1)
         self.date_format = '%m/%d/%y'
+        self.confirmed = self.confirmed.drop(columns=['Lat', 'Long'])
         
     def countryCases(self, country, date):
+        '''This function return the new cases in the specific date and country'''
         index = 1
         today = datetime.strptime(date, self.date_format)
         yesterday = today - timedelta(days=1)
@@ -57,6 +59,9 @@ class CovidDB:
         return daily_confirmed_cases,daily_death_cases,daily_recover_cases
 
     def newCasesReport(self, countries):
+        '''Desgin to return a report with the new daily cases of a
+        country, showing the states when this data is available
+        '''
         start_index = 3
         statesColumn = self.confirmed.columns[0]
         confirmed_cases = self.confirmed.loc[countries]
@@ -64,6 +69,36 @@ class CovidDB:
         L = len(confirmed_cases.columns)
         for i in range(start_index, L-1):
             dailyCases[confirmed_cases.columns[i+1]] = confirmed_cases[confirmed_cases.columns[i+1]] - confirmed_cases[confirmed_cases.columns[i]]
+        
+        return dailyCases
+    
+    def newCasesCountries(self, countries):
+        '''
+        Return the accumulative cases
+        '''
+        accumulativeCases = pd.DataFrame(columns=self.confirmed.columns)
+        accumulativeCases = accumulativeCases.append(self.confirmed.loc[countries])
+        return accumulativeCases
+
+    def newDailyCasesCountries(self, countries):
+        '''
+        Return the daily cases
+        '''
+        accumulativeCases = self.newCasesCountries(countries)
+        dailyCases = accumulativeCases.drop(['Province/State'],axis=1).diff(axis=1)
+        return dailyCases
+
+    def newCasesByCountry(self, country, method = ''):
+        '''Design to return the new daily cases from a country, where 
+        is considered the sum of all the states.
+        '''
+        confirmed_cases = self.confirmed.loc[country]
+        if type(confirmed_cases) == pd.core.frame.DataFrame:
+            print('There are multiple states in {c}'.format(c=country))
+            if method.lower() == 'nan':
+                confirmed_cases = confirmed_cases[confirmed_cases['Province/State'].isna()]
+            confirmed_cases = confirmed_cases.drop(columns=['Province/State']).sum()
+        dailyCases = confirmed_cases.diff()
         
         return dailyCases
 
