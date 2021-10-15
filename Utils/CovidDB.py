@@ -62,16 +62,29 @@ class CovidDB:
         '''
         Return the accumulative cases
         '''
-        accumulativeCases = pd.DataFrame(columns=self.confirmed.columns)
-        accumulativeCases = accumulativeCases.append(self.confirmed.loc[countries])
+        if type(countries) != list:
+            countries = [countries]
+        accumulativeCases = self.confirmed.loc[countries]
         return accumulativeCases
 
     def newDailyCasesCountries(self, countries):
         '''
         Return the daily cases
+        Example ['New Zealand','Autralia','India']: 
+        Daily total cases in Autralia:
+            dailyCases.loc['Australia'].sum()
+        Daily cases in Australia-Victoria:
+            dailyCases.loc['Australia'].loc['Victoria']
+        Daily cases in New Zealand (no cook island):
+            dailyCases.['New Zealand'].loc['']
+        Daily cases in India:
+            dailyCases.['India'].loc['']
         '''
         accumulativeCases = self.newCasesCountries(countries)
-        dailyCases = accumulativeCases.drop(['Province/State'],axis=1).diff(axis=1)
+        ac = accumulativeCases.reset_index()
+        ac['Province/State'] = ac['Province/State'].fillna('')
+        ac = ac.set_index(['Country/Region','Province/State'])
+        dailyCases = ac.diff(axis=1)
         return dailyCases
 
 
