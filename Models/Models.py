@@ -33,9 +33,9 @@ class color:
 class Models:
     def __init__(self, state):
         self.state = state
-        self.arima_path = RESULTS_PATH + '\\IT819\\arima\\'
-        self.active_path = RESULTS_PATH + '\\IT819\\active_cases\\'
-        self.regression_path = RESULTS_PATH + '\\IT819\\regression\\'
+        self.arima_path = RESULTS_PATH + 'IT819\\arima\\'
+        self.active_path = RESULTS_PATH + 'IT819\\active_cases\\'
+        self.regression_path = RESULTS_PATH + 'IT819\\regression\\'
 
         self.df_per_State_features = pd.read_csv(DATA_PATH + self.state + '.csv')
         self.df_per_State_features = self.df_per_State_features.fillna(0)
@@ -43,8 +43,8 @@ class Models:
 
         data = self.df_per_State_features['Active Cases'].astype('double').values
         daterange = self.df_per_State_features['Date'].values
-        self.last_date = daterange[-1]
         date_index = pd.date_range(start=daterange[0], end=daterange[-1], freq='D')
+        self.last_date = daterange[-1]
         self.activecases = pd.Series(data, date_index)
         self.totActiveCases = self.activecases.values.reshape(-1,1)
 
@@ -74,17 +74,11 @@ class Models:
 
     def getDailyCases(self):
         covidDB = CovidDB()
-        self.dailyCases = covidDB.newCasesReport(self.state)
+        method = ''
+        if self.state == 'New Zealand':
+            method = 'nan'
+        self.dailyCases = covidDB.newCasesByCountry(self.state,method)
     
-    def plotActiveCases(self):
-        f, ax = plt.subplots(1,1, figsize=(12,10))
-        plt.plot(self.activecases)
-        title = 'Active case History for ' + self.state
-        ax.set_title(title)
-        ax.set_ylabel("No of Active Covid-19 Cases")
-        ax.set_xlim([dt.date(2020, 3, 1), dt.date(2020, 5, 1)])
-        plt.savefig(self.active_path + self.last_date + '_{state}_active_cases.png'.format(state=self.state))
-
     def __errors(self,activeCases,prediction):
         RMSE = np.sqrt(mse(activeCases,prediction))
         MAE = mae(activeCases,prediction)
@@ -133,6 +127,15 @@ class Models:
         errors,pred,residuals = self.__ARIMA(model)
         self.plotARIMA(pred,residuals,method)
         return errors, pred
+
+    def plotActiveCases(self):
+        f, ax = plt.subplots(1,1, figsize=(12,10))
+        plt.plot(self.activecases)
+        title = 'Active case History for ' + self.state
+        ax.set_title(title)
+        ax.set_ylabel("No of Active Covid-19 Cases")
+        ax.set_xlim([dt.date(2020, 3, 1), dt.date(2020, 5, 1)])
+        plt.savefig(self.active_path + self.last_date + '_{state}_active_cases.png'.format(state=self.state))
 
     def plotRegression(self,prediction,model):
         plt.figure(figsize=(11,6))

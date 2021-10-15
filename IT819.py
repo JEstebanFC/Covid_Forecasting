@@ -56,9 +56,9 @@ if __name__ == "__main__":
             print(state + ' is not available')
             continue
         # try:
-        r2 = {}
-        mae = {}
         rmse = {}
+        mae = {}
+        r2 = {}
         models = Models(state)
         models.plotActiveCases()
         for model in options_models:
