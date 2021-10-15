@@ -85,6 +85,7 @@ class CovidDB:
         ac['Province/State'] = ac['Province/State'].fillna('')
         ac = ac.set_index(['Country/Region','Province/State'])
         dailyCases = ac.diff(axis=1)
+        dailyCases.columns = pd.to_datetime(dailyCases.columns)
         return dailyCases
 
 
