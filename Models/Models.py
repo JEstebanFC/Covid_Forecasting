@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 from Utils.CovidDB import CovidDB
 
-from Models import DATA_PATH,DATA_PATH_NEW, RESULTS_PATH
+from Models import DATA_PATH, RESULTS_PATH
 
 from sklearn.pipeline import make_pipeline
 from sklearn.metrics import r2_score
@@ -35,40 +35,37 @@ class Models:
         self.country = country
         self.results_path = RESULTS_PATH + 'IT819\\'
 
-        self.df_per_State_features = pd.read_csv(DATA_PATH + self.country + '.csv')
-        self.df_per_State_features = self.df_per_State_features.fillna(0)
-        self.df_per_State_features["Active Cases"].replace({0:1}, inplace=True)
+        state_data = pd.read_csv(DATA_PATH + self.country + '.csv')
+        state_data = state_data.fillna(0)
+        state_data["Active Cases"].replace({0:1}, inplace=True)
 
-        data = self.df_per_State_features['Active Cases'].astype('double').values
-        daterange = self.df_per_State_features['Date'].values
+        data = state_data['Active Cases'].astype('double').values
+        self.dates = state_data['Date']
+        daterange = self.dates.values
         date_index = pd.date_range(start=daterange[0], end=daterange[-1], freq='D')
         self.last_date = daterange[-1]
         self.activecases = pd.Series(data, date_index)
-        self.totActiveCases = self.activecases.values.reshape(-1,1)
+        totActiveCases = self.activecases.values.reshape(-1,1)
 
-        df_per_State_sel_features = self.df_per_State_features.copy(deep=False)
-        df_per_State_sel_features["Days Since"] = date_index - date_index[0]
-        df_per_State_sel_features["Days Since"] = df_per_State_sel_features["Days Since"].dt.days
-        df_per_State_sel_features = df_per_State_sel_features.iloc[:,[4,5, 7,8,9,10,11,12,13,14,15,16,23]]
-        self.df_per_State_features["Days Since"] = date_index - date_index[0]
-        self.df_per_State_features["Days Since"] = self.df_per_State_features["Days Since"].dt.days
+        state_data_reduce = state_data.iloc[:,[4,5,7,8,9,10,11,12,13,14,15,16,23]]
 
+        data_quantity = state_data.shape[0]
         # 70% training data, 30 for validation
-        self.train_ml = self.df_per_State_features.iloc[:int(self.df_per_State_features.shape[0]*0.70)]
-        self.valid_ml = self.df_per_State_features.iloc[int(self.df_per_State_features.shape[0]*0.70):]
-        self.train_dates = self.df_per_State_features['Date'].iloc[:int(df_per_State_sel_features.shape[0]*0.70)].values
-        self.valid_dates = self.df_per_State_features['Date'].iloc[int(df_per_State_sel_features.shape[0]*0.70):].values
-        self.trainActiveCases = self.totActiveCases[:int(self.df_per_State_features.shape[0]*0.70)]
-        self.validActiveCases = self.totActiveCases[int(self.df_per_State_features.shape[0]*0.70):]
+        train_ml = state_data.iloc[:int(data_quantity*0.70)]
+        valid_ml = state_data.iloc[int(data_quantity*0.70):]
+        train_dates = self.dates.iloc[:int(data_quantity*0.70)].values
+        valid_dates = self.dates.iloc[int(data_quantity*0.70):].values
+        self.trainActiveCases = totActiveCases[:int(data_quantity*0.70)]
+        self.validActiveCases = totActiveCases[int(data_quantity*0.70):]
         #Regression
-        self.ml_all_f = df_per_State_sel_features.values
-        self.train_ml_all_f = df_per_State_sel_features.iloc[:int(df_per_State_sel_features.shape[0]*0.70)].values
-        self.valid_ml_all_f = df_per_State_sel_features.iloc[int(df_per_State_sel_features.shape[0]*0.70):].values
+        self.ml_all_f = state_data_reduce.values
+        self.train_ml_all_f = state_data_reduce.iloc[:int(data_quantity*0.70)].values
+        self.valid_ml_all_f = state_data_reduce.iloc[int(data_quantity*0.70):].values
         #ARIMA
-        self.train_index = pd.date_range(start=self.train_dates[0], periods=len(self.train_dates), freq='D')
-        self.valid_index = pd.date_range(start=self.valid_dates[0], periods=len(self.valid_dates), freq='D')
-        self.train_active = pd.Series(self.train_ml['Active Cases'].values, self.train_index)
-        self.valid_active = pd.Series(self.valid_ml['Active Cases'].values, self.valid_index)
+        train_index = pd.date_range(start=train_dates[0], periods=len(train_dates), freq='D')
+        self.valid_index = pd.date_range(start=valid_dates[0], periods=len(valid_dates), freq='D')
+        self.train_active = pd.Series(train_ml['Active Cases'].values, train_index)
+        self.valid_active = pd.Series(valid_ml['Active Cases'].values, self.valid_index)
 
     def getDailyCases(self):
         covidDB = CovidDB()
@@ -134,8 +131,8 @@ class Models:
 
     def plotRegression(self,prediction,model):
         plt.figure(figsize=(11,6))
-        plt.plot(self.totActiveCases,label="Active Cases")
-        plt.plot(self.df_per_State_features['Date'], prediction, linestyle='--',label="Predicted Active Cases using {model} Regression".format(model=model),color='black')
+        plt.plot(self.activecases.values,label="Active Cases")
+        plt.plot(self.dates, prediction, linestyle='--',label="Predicted Active Cases using {model} Regression".format(model=model),color='black')
         plt.title("Active Cases {model} Regression Prediction".format(model=model))
         plt.xlabel('Time')
         plt.ylabel('Active Cases')
