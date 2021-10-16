@@ -1,4 +1,7 @@
 import pandas as pd
+import matplotlib.pyplot as plt
+
+from Models import DATA_PATH, RESULTS_PATH
 
 from datetime import datetime, timedelta
 
@@ -56,27 +59,25 @@ class CovidDB:
         print(result.to_string(),'\n')
         return daily_confirmed_cases,daily_death_cases,daily_recover_cases
 
-    def newCasesCountries(self, countries):
-        '''
-        Return the accumulative cases
-        '''
+    def accumulativeCases(self, countries):
+        '''Return the accumulative cases'''
         if type(countries) != list:
             countries = [countries]
         accumulativeCases = self.confirmed.loc[countries]
         return accumulativeCases
 
-    def newDailyCasesCountries(self, countries):
+    def dailyCases(self, countries):
         '''
-        Return the daily cases
-        Example ['New Zealand','Autralia','India']: 
-        Daily total cases in Autralia:
-            dailyCases.loc['Australia'].sum()
-        Daily cases in Australia-Victoria:
-            dailyCases.loc['Australia'].loc['Victoria']
-        Daily cases in New Zealand (no cook island):
-            dailyCases.['New Zealand'].loc['']
-        Daily cases in India:
-            dailyCases.['India'].loc['']
+            Return the daily cases
+            Example ['New Zealand','Autralia','India']: 
+            Daily total cases in Autralia:
+                dailyCases.loc['Australia'].sum()
+            Daily cases in Australia-Victoria:
+                dailyCases.loc['Australia'].loc['Victoria']
+            Daily cases in New Zealand (no cook island):
+                dailyCases.loc['New Zealand'].loc['']
+            Daily cases in India:
+                dailyCases.loc['India'].loc['']
         '''
         accumulativeCases = self.newCasesCountries(countries)
         ac = accumulativeCases.reset_index()
@@ -85,5 +86,22 @@ class CovidDB:
         dailyCases = ac.diff(axis=1)
         dailyCases.columns = pd.to_datetime(dailyCases.columns)
         return dailyCases
+        #data = dailyCases.loc['New Zealand'].loc['']
+        #data.plot().get_figure().savefig(results_path + 'test1.png')
 
-
+    def plotDailyCases(self, countries):
+        results_path = RESULTS_PATH + 'IT819\\active_cases\\'
+        if type(countries) != list:
+            countries = [countries]
+        for country in countries:
+            dailyCases = self.dailyCases(country)
+            try:
+                data = dailyCases.loc[country].loc['']
+            except:
+                data = dailyCases.loc[country].sum()
+            f, ax = plt.subplots(1,1, figsize=(12,10))
+            plt.plot(data)
+            ax.set_title('Active case History for ' + country)
+            ax.set_ylabel("No of Active Covid-19 Cases")
+            date = str(data.index[-1]).split()[0]
+            plt.savefig(results_path + date + '_{country}_active_cases.png'.format(country=country))
