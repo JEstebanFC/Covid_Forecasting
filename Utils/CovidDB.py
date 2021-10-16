@@ -2,8 +2,6 @@ import pandas as pd
 
 from datetime import datetime, timedelta
 
-from Models import DATA_PATH_NEW, RESULTS_PATH
-
 class color:
    PURPLE = '\033[95m'
    CYAN = '\033[96m'
