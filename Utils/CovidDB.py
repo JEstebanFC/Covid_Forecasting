@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -79,7 +80,7 @@ class CovidDB:
             Daily cases in India:
                 dailyCases.loc['India'].loc['']
         '''
-        accumulativeCases = self.newCasesCountries(countries)
+        accumulativeCases = self.accumulativeCases(countries)
         ac = accumulativeCases.reset_index()
         ac['Province/State'] = ac['Province/State'].fillna('')
         ac = ac.set_index(['Country/Region','Province/State'])
@@ -90,7 +91,6 @@ class CovidDB:
         #data.plot().get_figure().savefig(results_path + 'test1.png')
 
     def plotDailyCases(self, countries):
-        results_path = RESULTS_PATH + 'IT819\\active_cases\\'
         if type(countries) != list:
             countries = [countries]
         for country in countries:
@@ -104,4 +104,15 @@ class CovidDB:
             ax.set_title('Active case History for ' + country)
             ax.set_ylabel("No of Active Covid-19 Cases")
             date = str(data.index[-1]).split()[0]
+            results_path = self.createFolder(date)
             plt.savefig(results_path + date + '_{country}_active_cases.png'.format(country=country))
+
+    def createFolder(self, date):
+        results_path = '%sIT819\\active_cases\\%s\\' %(RESULTS_PATH, date)
+        try:
+            os.makedirs(results_path)
+        except OSError:
+            pass
+        finally:
+            # print('Results saved in: ', results_path)
+            return results_path

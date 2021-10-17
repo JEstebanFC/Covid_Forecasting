@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 import datetime as dt
@@ -33,20 +34,28 @@ class color:
 class Models:
     def __init__(self, country):
         self.country = country
-        self.results_path = RESULTS_PATH + 'IT819\\'
 
         state_data = pd.read_csv(DATA_PATH + self.country + '.csv')
         state_data = state_data.fillna(0)
         state_data["Active Cases"].replace({0:1}, inplace=True)
-        data = state_data['Active Cases'].astype('double').values
         data_quantity = state_data.shape[0]
 
-        self.dates = state_data['Date']
-        date_index = pd.date_range(start=self.dates.values[0], end=self.dates.values[-1], freq='D')
+        dates = state_data['Date']
+        lastDay = dates.values[-1]
+        date_index = pd.date_range(start=dates.values[0], end=lastDay, freq='D')
         state_data["Days Since"] = date_index - date_index[0]
         state_data["Days Since"] = state_data["Days Since"].dt.days
         self.daysSince = state_data["Days Since"]
+        
+        self.results_path = '%sIT819\\%s\\' %(RESULTS_PATH, lastDay)
+        try:
+            os.makedirs(self.results_path)
+        except OSError:
+            pass
+        finally:
+            print('Results saved in: ', self.results_path)
 
+        data = state_data['Active Cases'].astype('double').values
         self.activecases = pd.Series(data, date_index)
         totActiveCases = self.activecases.values.reshape(-1,1)
         self.trainActiveCases = totActiveCases[:int(data_quantity*0.70)]
@@ -110,10 +119,10 @@ class Models:
         elif method == 'ARIMA':
             model = ARIMA(self.trainActiveCases, order=(1, 1, 1))
         errors,pred,residuals = self.__ARIMA(model)
-        self.plotARIMA(pred,residuals,method)
+        self.plotARIMA(pred,method)
         return errors, pred
 
-    def plotRegression(self,prediction,model):
+    def plotRegression(self, prediction, model):
         plt.figure(figsize=(11,6))
         plt.plot(self.activecases, label="Active Cases")
         plt.plot(self.activecases.index, prediction, linestyle='--',label="Predicted Active Cases using {model} Regression".format(model=model),color='black')
@@ -122,9 +131,9 @@ class Models:
         plt.ylabel('Active Cases')
         # plt.xticks(rotation=90)
         plt.legend()
-        plt.savefig(self.results_path + 'regression\\' + self.dates.values[-1] + '_{country}_{model}_regression.png'.format(country=self.country,model=model.lower()))
+        plt.savefig(self.results_path + '{country}_{model}_regression.png'.format(country=self.country,model=model.lower()))
 
-    def plotARIMA(self,prediction,residuals,model):
+    def plotARIMA(self, prediction, model):
         # Plotting
         f, ax = plt.subplots(1,1 , figsize=(12,10))
         plt.plot(self.train_active, marker='o',color='blue',label ="Train Data Set")
@@ -134,10 +143,12 @@ class Models:
         plt.xlabel("Date Time")
         plt.ylabel('Active Cases')
         plt.title("Active Cases {model} Model Forecasting for {country}".format(country=self.country,model=model))
-        plt.savefig(self.results_path + 'arima\\' + self.dates.values[-1] + '_{country}_{model}.png'.format(country=self.country,model=model))
+        plt.savefig(self.results_path + '{country}_{model}.png'.format(country=self.country,model=model))
+    
+    def plotResidualsARIMA(self, residuals, model):
         # plot residual errors
         residuals.plot()
-        resError = self.results_path + 'arima\\resError\\'
-        plt.savefig(resError + self.dates.values[-1] + '_{country}_{model}_residual_error.png'.format(country=self.country,model=model))
+        resError = self.results_path + 'ArimaResError\\'
+        plt.savefig(resError + '{country}_{model}_residual_error.png'.format(country=self.country,model=model))
         residuals.plot(kind='kde')
-        plt.savefig(resError + self.dates.values[-1] + '_{country}_{model}_residual_error_kde.png'.format(country=self.country,model=model))
+        plt.savefig(resError + '{country}_{model}_residual_error_kde.png'.format(country=self.country,model=model))
