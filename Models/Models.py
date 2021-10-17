@@ -38,52 +38,45 @@ class Models:
         state_data = pd.read_csv(DATA_PATH + self.country + '.csv')
         state_data = state_data.fillna(0)
         state_data["Active Cases"].replace({0:1}, inplace=True)
-
         data = state_data['Active Cases'].astype('double').values
+        data_quantity = state_data.shape[0]
+
         self.dates = state_data['Date']
-        daterange = self.dates.values
-        date_index = pd.date_range(start=daterange[0], end=daterange[-1], freq='D')
-        self.last_date = daterange[-1]
+        date_index = pd.date_range(start=self.dates.values[0], end=self.dates.values[-1], freq='D')
+        state_data["Days Since"] = date_index - date_index[0]
+        state_data["Days Since"] = state_data["Days Since"].dt.days
+        self.daysSince = state_data["Days Since"]
+
         self.activecases = pd.Series(data, date_index)
         totActiveCases = self.activecases.values.reshape(-1,1)
-
-        state_data_reduce = state_data.iloc[:,[4,5,7,8,9,10,11,12,13,14,15,16,23]]
-
-        data_quantity = state_data.shape[0]
-        # 70% training data, 30 for validation
-        train_ml = state_data.iloc[:int(data_quantity*0.70)]
-        valid_ml = state_data.iloc[int(data_quantity*0.70):]
-        train_dates = self.dates.iloc[:int(data_quantity*0.70)].values
-        valid_dates = self.dates.iloc[int(data_quantity*0.70):].values
         self.trainActiveCases = totActiveCases[:int(data_quantity*0.70)]
         self.validActiveCases = totActiveCases[int(data_quantity*0.70):]
-        #Regression
-        self.ml_all_f = state_data_reduce.values
-        self.train_ml_all_f = state_data_reduce.iloc[:int(data_quantity*0.70)].values
-        self.valid_ml_all_f = state_data_reduce.iloc[int(data_quantity*0.70):].values
-        #ARIMA
-        train_index = pd.date_range(start=train_dates[0], periods=len(train_dates), freq='D')
-        self.valid_index = pd.date_range(start=valid_dates[0], periods=len(valid_dates), freq='D')
-        self.train_active = pd.Series(train_ml['Active Cases'].values, train_index)
+        
+        train_ml = state_data.iloc[:int(data_quantity*0.70)]
+        valid_ml = state_data.iloc[int(data_quantity*0.70):]
+        self.train_index = self.daysSince[:int(data_quantity*0.70)]
+        self.valid_index = self.daysSince[int(data_quantity*0.70):]
+        self.train_active = pd.Series(train_ml['Active Cases'].values, self.train_index)
         self.valid_active = pd.Series(valid_ml['Active Cases'].values, self.valid_index)
 
     def getDailyCases(self):
         covidDB = CovidDB()
-        self.dailyCases = covidDB.newDailyCasesCountries(self.country)
+        self.dailyCases = covidDB.dailyCases(self.country)
+        covidDB.plotDailyCases(self.country)
     
-    def __errors(self,activeCases,prediction):
-        RMSE = np.sqrt(mse(activeCases,prediction))
-        MAE = mae(activeCases,prediction)
-        R2 = r2_score(activeCases,prediction)
+    def __errors(self,validCases,prediction):
+        RMSE = np.sqrt(mse(validCases,prediction))
+        MAE = mae(validCases,prediction)
+        R2 = r2_score(validCases,prediction)
         return [RMSE,MAE,R2]
     
     def __regression(self, regression):
         wn.filterwarnings("ignore")
-        regression.fit(self.train_ml_all_f,self.trainActiveCases)
+        regression.fit(self.train_index.values.reshape(-1,1),self.trainActiveCases)
         wn.filterwarnings("default")
-        prediction = regression.predict(self.valid_ml_all_f)
+        prediction = regression.predict(self.valid_index.values.reshape(-1,1))
         errors = self.__errors(self.validActiveCases,prediction)
-        pred = regression.predict(self.ml_all_f)
+        pred = regression.predict(self.daysSince.values.reshape(-1,1))
         return errors,pred
 
     def regression(self, method):
@@ -120,25 +113,16 @@ class Models:
         self.plotARIMA(pred,residuals,method)
         return errors, pred
 
-    def plotActiveCases(self):
-        f, ax = plt.subplots(1,1, figsize=(12,10))
-        plt.plot(self.activecases)
-        title = 'Active case History for ' + self.country
-        ax.set_title(title)
-        ax.set_ylabel("No of Active Covid-19 Cases")
-        ax.set_xlim([dt.date(2020, 3, 1), dt.date(2020, 5, 1)])
-        plt.savefig(self.results_path + 'active_cases\\' + self.last_date + '_{country}_active_cases.png'.format(country=self.country))
-
     def plotRegression(self,prediction,model):
         plt.figure(figsize=(11,6))
-        plt.plot(self.activecases.values,label="Active Cases")
-        plt.plot(self.dates, prediction, linestyle='--',label="Predicted Active Cases using {model} Regression".format(model=model),color='black')
+        plt.plot(self.activecases, label="Active Cases")
+        plt.plot(self.activecases.index, prediction, linestyle='--',label="Predicted Active Cases using {model} Regression".format(model=model),color='black')
         plt.title("Active Cases {model} Regression Prediction".format(model=model))
         plt.xlabel('Time')
         plt.ylabel('Active Cases')
-        plt.xticks(rotation=90)
+        # plt.xticks(rotation=90)
         plt.legend()
-        plt.savefig(self.results_path + 'regression\\' + self.last_date + '_{country}_{model}_regression.png'.format(country=self.country,model=model.lower()))
+        plt.savefig(self.results_path + 'regression\\' + self.dates.values[-1] + '_{country}_{model}_regression.png'.format(country=self.country,model=model.lower()))
 
     def plotARIMA(self,prediction,residuals,model):
         # Plotting
@@ -150,10 +134,10 @@ class Models:
         plt.xlabel("Date Time")
         plt.ylabel('Active Cases')
         plt.title("Active Cases {model} Model Forecasting for {country}".format(country=self.country,model=model))
-        plt.savefig(self.results_path + 'arima\\' + self.last_date + '_{country}_{model}.png'.format(country=self.country,model=model))
+        plt.savefig(self.results_path + 'arima\\' + self.dates.values[-1] + '_{country}_{model}.png'.format(country=self.country,model=model))
         # plot residual errors
         residuals.plot()
         resError = self.results_path + 'arima\\resError\\'
-        plt.savefig(resError + self.last_date + '_{country}_{model}_residual_error.png'.format(country=self.country,model=model))
+        plt.savefig(resError + self.dates.values[-1] + '_{country}_{model}_residual_error.png'.format(country=self.country,model=model))
         residuals.plot(kind='kde')
-        plt.savefig(resError + self.last_date + '_{country}_{model}_residual_error_kde.png'.format(country=self.country,model=model))
+        plt.savefig(resError + self.dates.values[-1] + '_{country}_{model}_residual_error_kde.png'.format(country=self.country,model=model))
