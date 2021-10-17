@@ -60,7 +60,6 @@ if __name__ == "__main__":
         mae = {}
         r2 = {}
         models = Models(state)
-        models.plotActiveCases()
         for model in options_models:
             if model in arima_models:
                 errors,pred = models.ARIMA(model)
