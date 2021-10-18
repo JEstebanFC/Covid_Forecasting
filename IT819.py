@@ -17,20 +17,7 @@ if __name__ == "__main__":
     for om in options.model.split(','):
         opts_models.append(om.lower())
     
-    states_list = open(DATA_PATH + 'States_list.csv', 'r')
-    states = states_list.readline().split(',')
-    states_list.close()
-    #### Active cases ####
-    if options.state.lower() == 'list':
-        for st in states:
-            print(st)
-        exit()
-    if options.state.lower() == 'all':
-        options.state = []
-        for st in states:
-            options.state.append(st)
-    else:
-        options.state = options.state.split(',')
+    options.state = options.state.split(',')
     
     options_models = []
     arima_models = ['ar','ma','arima']
@@ -52,9 +39,9 @@ if __name__ == "__main__":
     R2 = pd.DataFrame(columns=options_models, index=options.state)
     R2.index.name = 'States'
     for state in options.state:
-        if state not in states:
-            print(state + ' is not available')
-            continue
+        # if state not in states:
+        #     print(state + ' is not available')
+        #     continue
         # try:
         rmse = {}
         mae = {}
