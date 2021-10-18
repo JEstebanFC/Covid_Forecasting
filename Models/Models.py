@@ -32,21 +32,14 @@ class color:
    END = '\033[0m'
 
 class Models:
-    def __init__(self, country):
+    def __init__(self, country, initDay=None, lastDay=None):
         self.country = country
 
-        state_data = pd.read_csv(DATA_PATH + self.country + '.csv')
-        state_data = state_data.fillna(0)
-        state_data["Active Cases"].replace({0:1}, inplace=True)
-        data_quantity = state_data.shape[0]
-
-        dates = state_data['Date']
-        lastDay = dates.values[-1]
-        date_index = pd.date_range(start=dates.values[0], end=lastDay, freq='D')
-        state_data["Days Since"] = date_index - date_index[0]
-        state_data["Days Since"] = state_data["Days Since"].dt.days
-        self.daysSince = state_data["Days Since"]
+        self.selectData(initDay=initDay, lastDay=lastDay)
         
+        if not lastDay:
+            lastDay = str(self.daysSince.index[-1].date())
+            # lastDay = str(pd.to_datetime('now').date()
         self.results_path = '%sIT819\\%s\\' %(RESULTS_PATH, lastDay)
         try:
             os.makedirs(self.results_path)
@@ -55,24 +48,46 @@ class Models:
         finally:
             print('Results saved in: ', self.results_path)
 
-        data = state_data['Active Cases'].astype('double').values
-        self.activecases = pd.Series(data, date_index)
-        totActiveCases = self.activecases.values.reshape(-1,1)
-        self.trainActiveCases = totActiveCases[:int(data_quantity*0.70)]
-        self.validActiveCases = totActiveCases[int(data_quantity*0.70):]
-        
-        train_ml = state_data.iloc[:int(data_quantity*0.70)]
-        valid_ml = state_data.iloc[int(data_quantity*0.70):]
-        self.train_index = self.daysSince[:int(data_quantity*0.70)]
-        self.valid_index = self.daysSince[int(data_quantity*0.70):]
-        self.train_active = pd.Series(train_ml['Active Cases'].values, self.train_index)
-        self.valid_active = pd.Series(valid_ml['Active Cases'].values, self.valid_index)
-
-    def getDailyCases(self):
-        covidDB = CovidDB()
-        self.dailyCases = covidDB.dailyCases(self.country)
-        covidDB.plotDailyCases(self.country)
+    def getDailyCases(self, country=None):
+        if not country:
+            country = self.country
+        if country in ['Maharashtra','Delhi']:
+            dailyCases = pd.read_csv(DATA_PATH + country + '.csv')
+        else:
+            covidDB = CovidDB()
+            covidDB.plotDailyCases(country)
+            dailyCases = covidDB.dailyCases(country)
+            try:
+                dailyCases = dailyCases.loc[country].loc['']
+            except:
+                dailyCases = dailyCases.loc[country].sum()
+            dailyCases.index.name = 'Date'
+            dailyCases = dailyCases.to_frame('Active Cases')
+            dailyCases = dailyCases.reset_index()
+        dailyCases.fillna(0)
+        # dailyCases["Active Cases"].replace({0:1}, inplace=True)
+        return dailyCases
     
+    def selectData(self, train_percent=0.7, initDay=None, lastDay=None):
+        state_data = self.getDailyCases()
+        state_data = state_data.fillna(0)
+
+        date_index = pd.date_range(start=state_data['Date'].values[0], periods=len(state_data['Date']), freq='D')
+        state_data["Days Since"] = date_index - date_index[0]
+        state_data["Days Since"] = state_data["Days Since"].dt.days
+        self.daysSince = pd.Series(state_data['Days Since'].values, date_index)
+        self.activecases = pd.Series(state_data['Active Cases'].values, date_index)
+
+        data_quantity = state_data.shape[0]
+        train_ml = self.activecases[:int(data_quantity*train_percent)]
+        valid_ml = self.activecases[int(data_quantity*train_percent):]
+        self.trainActiveCases = train_ml.values.reshape(-1,1)
+        self.validActiveCases = valid_ml.values.reshape(-1,1)
+        self.train_index = self.daysSince[:int(data_quantity*train_percent)]
+        self.valid_index = self.daysSince[int(data_quantity*train_percent):]
+        self.train_active = pd.Series(train_ml.values, self.train_index)
+        self.valid_active = pd.Series(valid_ml.values, self.valid_index)
+
     def __errors(self,validCases,prediction):
         RMSE = np.sqrt(mse(validCases,prediction))
         MAE = mae(validCases,prediction)
@@ -99,7 +114,15 @@ class Models:
             lasso_reg = Lasso(alpha=.8,normalize=True, max_iter=1e5)
             regression = make_pipeline(PolynomialFeatures(3), lasso_reg)
         errors,pred = self.__regression(regression)
-        self.plotRegression(pred, method)
+        # Plotting
+        xData = [self.activecases.index,self.activecases.index]
+        yData = [self.activecases.values,pred]
+        linestyle = ['-C0','--k']
+        legends = ['Active Cases',"Predicted Active Cases: {model} Regression".format(model=method)]
+        labels = ['Date Time','Active Cases']
+        fileName = '{country}_regression_{model}.png'.format(country=self.country, model=method.lower())
+        title = "Active Cases {model} Regression Prediction for {country}".format(country=self.country,model=method)
+        self.plot(xData, yData, linestyle, legends, labels, fileName, title)
         return errors, pred
 
     def __ARIMA(self, model):
@@ -113,42 +136,44 @@ class Models:
     def ARIMA(self, method):
         method = method.upper()
         if method == 'AR':
-            model = ARIMA(self.trainActiveCases, order=(2, 0, 0))
+            order = (2, 0, 0)
         elif method == 'MA':
-            model = ARIMA(self.trainActiveCases, order=(0, 0, 2))
+            order = (0, 0, 2)
         elif method == 'ARIMA':
-            model = ARIMA(self.trainActiveCases, order=(1, 1, 1))
+            order = (1, 1, 1)
+        model = ARIMA(self.trainActiveCases, order=order)
         errors,pred,residuals = self.__ARIMA(model)
-        self.plotARIMA(pred,method)
+        # Plotting
+        xData = [self.train_index.index, self.valid_index.index, self.valid_index.index]
+        yData = [self.train_active, self.valid_active, pred]
+        linestyle = ['o-b','o-g','o-r']
+        legends = ['Train Data Set', 'Valid Data Set', 'Predicted '+ method]
+        labels = ['Date Time','Active Cases']
+        fileName = '{country}_{model}.png'.format(country=self.country,model=method)
+        title = "Active Cases {model} Model Forecasting for {country}".format(country=self.country,model=method)
+        self.plot(xData, yData, linestyle, legends, labels, fileName, title)
+        self.plotResidualsARIMA(residuals, method)
         return errors, pred
 
-    def plotRegression(self, prediction, model):
-        plt.figure(figsize=(11,6))
-        plt.plot(self.activecases, label="Active Cases")
-        plt.plot(self.activecases.index, prediction, linestyle='--',label="Predicted Active Cases using {model} Regression".format(model=model),color='black')
-        plt.title("Active Cases {model} Regression Prediction".format(model=model))
-        plt.xlabel('Time')
-        plt.ylabel('Active Cases')
-        # plt.xticks(rotation=90)
-        plt.legend()
-        plt.savefig(self.results_path + '{country}_{model}_regression.png'.format(country=self.country,model=model.lower()))
+    def plot(self, xData, yData, lineStyle, legends, labels, fileName, title):
+        plt.figure(figsize=(12,10))
+        plt.title(title)
+        plt.xlabel(labels[0])
+        plt.ylabel(labels[1])
+        plt.xticks(rotation=45)
+        for xd,yd,ls,l in zip(xData, yData, lineStyle, legends):
+            plt.plot(xd, yd, ls, label=l)
+        plt.legend(loc=2)
+        plt.savefig(self.results_path + fileName)
 
-    def plotARIMA(self, prediction, model):
-        # Plotting
-        f, ax = plt.subplots(1,1 , figsize=(12,10))
-        plt.plot(self.train_active, marker='o',color='blue',label ="Train Data Set")
-        plt.plot(self.valid_active, marker='o',color='green',label ="Valid Data Set")
-        plt.plot(prediction, marker='o',color='red',label ="Predicted " + model)
-        plt.legend()
-        plt.xlabel("Date Time")
-        plt.ylabel('Active Cases')
-        plt.title("Active Cases {model} Model Forecasting for {country}".format(country=self.country,model=model))
-        plt.savefig(self.results_path + '{country}_{model}.png'.format(country=self.country,model=model))
-    
     def plotResidualsARIMA(self, residuals, model):
-        # plot residual errors
-        residuals.plot()
-        resError = self.results_path + 'ArimaResError\\'
-        plt.savefig(resError + '{country}_{model}_residual_error.png'.format(country=self.country,model=model))
-        residuals.plot(kind='kde')
-        plt.savefig(resError + '{country}_{model}_residual_error_kde.png'.format(country=self.country,model=model))
+        resPath = self.results_path + 'residual\\'
+        try:
+            os.makedirs(resPath)
+        except OSError:
+            pass
+        finally:
+            residuals.plot()
+            plt.savefig(resPath + '{country}_{model}_residual_error.png'.format(country=self.country,model=model))
+            residuals.plot(kind='kde')
+            plt.savefig(resPath + '{country}_{model}_residual_error_kde.png'.format(country=self.country,model=model))
