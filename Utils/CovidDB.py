@@ -86,6 +86,7 @@ class CovidDB:
         ac = ac.set_index(['Country/Region','Province/State'])
         dailyCases = ac.diff(axis=1)
         dailyCases.columns = pd.to_datetime(dailyCases.columns)
+        dailyCases.fillna(0, inplace=True)
         return dailyCases
         #data = dailyCases.loc['New Zealand'].loc['']
         #data.plot().get_figure().savefig(results_path + 'test1.png')
@@ -99,16 +100,19 @@ class CovidDB:
                 data = dailyCases.loc[country].loc['']
             except:
                 data = dailyCases.loc[country].sum()
-            f, ax = plt.subplots(1,1, figsize=(12,10))
-            plt.plot(data)
-            ax.set_title('Active case History for ' + country)
-            ax.set_ylabel("No of Active Covid-19 Cases")
+            plt.figure(figsize=(12,10))
             date = str(data.index[-1]).split()[0]
             results_path = self.createFolder(date)
-            plt.savefig(results_path + date + '_{country}_active_cases.png'.format(country=country))
+            plt.plot(data, label='Daily cases')
+            plt.xlabel("Date Time")
+            plt.ylabel("Active Covid-19 Cases")
+            plt.xticks(rotation=45)
+            plt.legend(loc=2)
+            plt.title('Active case History for ' + country)
+            plt.savefig(results_path + '{country}_active_cases.png'.format(country=country))
 
     def createFolder(self, date):
-        results_path = '%sIT819\\active_cases\\%s\\' %(RESULTS_PATH, date)
+        results_path = '%sIT819\\%s\\' %(RESULTS_PATH, date)
         try:
             os.makedirs(results_path)
         except OSError:
