@@ -8,6 +8,18 @@ from Models import DATA_PATH, RESULTS_PATH
 
 from Models.Models import Models
 
+class color:
+   PURPLE = '\033[95m'
+   CYAN = '\033[96m'
+   DARKCYAN = '\033[36m'
+   BLUE = '\033[94m'
+   GREEN = '\033[92m'
+   YELLOW = '\033[93m'
+   RED = '\033[91m'
+   BOLD = '\033[1m'
+   UNDERLINE = '\033[4m'
+   END = '\033[0m'
+
 if __name__ == "__main__":
     parser = OptionParser()
     parser.add_option('-m', '--model', dest='model', default='')
@@ -60,13 +72,13 @@ if __name__ == "__main__":
         R2.loc[state] = r2
         # except:
         #     print(state + ' failed')
-    print('\nRMSE')
+    print(color.BOLD + '\nRMSE' + color.END)
     print(RMSE.to_string())
-    print('\nMAE')
+    print(color.BOLD + '\nMAE' + color.END)
     print(MAE.to_string())
-    print('\nR2')
+    print(color.BOLD + '\nR2' + color.END)
     print(R2.to_string())
-    print()
+    print(color.BOLD + '\nResults saved in: ' + color.END)
     for p in resultsPath:
-        print('Results saved in: ', p)
+        print('\t',p)
     print()
