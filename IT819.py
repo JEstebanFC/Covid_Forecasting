@@ -23,13 +23,14 @@ class color:
 if __name__ == "__main__":
     parser = OptionParser()
     parser.add_option('-m', '--model', dest='model', default='')
-    parser.add_option('-s', '--state', dest='state', default='list')
+    parser.add_option('-c', '--countries', dest='countries', default='')
+    parser.add_option('-f', '--first-day', dest='firstDay', default=None)
+    parser.add_option('-l', '--last-day', dest='lastDay', default=None)
     options, args = parser.parse_args()
+    options.countries = options.countries.split(',')
     opts_models = []
     for om in options.model.split(','):
         opts_models.append(om.lower())
-    
-    options.state = options.state.split(',')
     
     options_models = []
     arima_models = ['ar','ma','arima']
@@ -44,18 +45,18 @@ if __name__ == "__main__":
         if model in regression_models or model in arima_models:
             options_models.append(model)
 
-    RMSE = pd.DataFrame(columns=options_models, index=options.state)
-    RMSE.index.name = 'States'
-    MAE = pd.DataFrame(columns=options_models, index=options.state)
-    MAE.index.name = 'States'
-    R2 = pd.DataFrame(columns=options_models, index=options.state)
-    R2.index.name = 'States'
+    RMSE = pd.DataFrame(columns=options_models, index=options.countries)
+    RMSE.index.name = 'Countries'
+    MAE = pd.DataFrame(columns=options_models, index=options.countries)
+    MAE.index.name = 'Countries'
+    R2 = pd.DataFrame(columns=options_models, index=options.countries)
+    R2.index.name = 'Countries'
     resultsPath = []
-    for state in options.state:
+    for state in options.countries:
         rmse = {}
         mae = {}
         r2 = {}
-        models = Models(state)
+        models = Models(state,options.firstDay,options.lastDay)
         p = models.results_path
         if p not in resultsPath:
             resultsPath.append(p)
@@ -70,8 +71,6 @@ if __name__ == "__main__":
         RMSE.loc[state] = rmse
         MAE.loc[state] = mae
         R2.loc[state] = r2
-        # except:
-        #     print(state + ' failed')
     print(color.BOLD + '\nRMSE' + color.END)
     print(RMSE.to_string())
     print(color.BOLD + '\nMAE' + color.END)
