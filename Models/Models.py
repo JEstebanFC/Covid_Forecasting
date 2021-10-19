@@ -19,32 +19,32 @@ from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from statsmodels.tsa.arima.model import ARIMA
 
-class color:
-   PURPLE = '\033[95m'
-   CYAN = '\033[96m'
-   DARKCYAN = '\033[36m'
-   BLUE = '\033[94m'
-   GREEN = '\033[92m'
-   YELLOW = '\033[93m'
-   RED = '\033[91m'
-   BOLD = '\033[1m'
-   UNDERLINE = '\033[4m'
-   END = '\033[0m'
-
 class Models:
     def __init__(self, country, initDay=None, lastDay=None):
         self.country = country
-
+        self.covidDB = CovidDB()
         self.selectData(initDay=initDay, lastDay=lastDay)
-        
         if not lastDay:
             lastDay = str(self.daysSince.index[-1].date())
-            # lastDay = str(pd.to_datetime('now').date()
-        self.results_path = '%sIT819\\%s\\' %(RESULTS_PATH, lastDay)
-        try:
-            os.makedirs(self.results_path)
-        except OSError:
-            pass
+        self.results_path = self.covidDB.createFolder(lastDay)
+        self.resPath = self.covidDB.createFolder(lastDay + '\\residual\\')
+
+    def selectData(self, train_percent=0.7, initDay=None, lastDay=None):
+        state_data = self.getDailyCases()
+
+        date_index = pd.date_range(start=state_data['Date'].values[0], periods=len(state_data['Date']), freq='D')
+        state_data["Days Since"] = date_index - date_index[0]
+        state_data["Days Since"] = state_data["Days Since"].dt.days
+        self.daysSince = pd.Series(state_data['Days Since'].values, date_index)
+        self.activecases = pd.Series(state_data['Active Cases'].values, date_index)
+
+        train_quantity = int(state_data.shape[0]*train_percent)
+        train_ml = self.activecases[:train_quantity]
+        valid_ml = self.activecases[train_quantity:]
+        self.train_index = self.daysSince[:train_quantity]
+        self.valid_index = self.daysSince[train_quantity:]
+        self.train_active = train_ml.values.reshape(-1,1)
+        self.valid_active = valid_ml.values.reshape(-1,1)
 
     def getDailyCases(self, country=None):
         if not country:
@@ -52,9 +52,8 @@ class Models:
         if country in ['Maharashtra','Delhi']:
             dailyCases = pd.read_csv(DATA_PATH + country + '.csv')
         else:
-            covidDB = CovidDB()
-            covidDB.plotDailyCases(country)
-            dailyCases = covidDB.dailyCases(country)
+            self.covidDB.plotDailyCases(country)
+            dailyCases = self.covidDB.dailyCases(country)
             try:
                 dailyCases = dailyCases.loc[country].loc['']
             except:
@@ -65,26 +64,6 @@ class Models:
         dailyCases.fillna(0)
         # dailyCases["Active Cases"].replace({0:1}, inplace=True)
         return dailyCases
-    
-    def selectData(self, train_percent=0.7, initDay=None, lastDay=None):
-        state_data = self.getDailyCases()
-        state_data = state_data.fillna(0)
-
-        date_index = pd.date_range(start=state_data['Date'].values[0], periods=len(state_data['Date']), freq='D')
-        state_data["Days Since"] = date_index - date_index[0]
-        state_data["Days Since"] = state_data["Days Since"].dt.days
-        self.daysSince = pd.Series(state_data['Days Since'].values, date_index)
-        self.activecases = pd.Series(state_data['Active Cases'].values, date_index)
-
-        data_quantity = state_data.shape[0]
-        train_ml = self.activecases[:int(data_quantity*train_percent)]
-        valid_ml = self.activecases[int(data_quantity*train_percent):]
-        self.trainActiveCases = train_ml.values.reshape(-1,1)
-        self.validActiveCases = valid_ml.values.reshape(-1,1)
-        self.train_index = self.daysSince[:int(data_quantity*train_percent)]
-        self.valid_index = self.daysSince[int(data_quantity*train_percent):]
-        self.train_active = pd.Series(train_ml.values, self.train_index)
-        self.valid_active = pd.Series(valid_ml.values, self.valid_index)
 
     def __errors(self,validCases,prediction):
         RMSE = np.sqrt(mse(validCases,prediction))
@@ -94,10 +73,10 @@ class Models:
     
     def __regression(self, regression):
         wn.filterwarnings("ignore")
-        regression.fit(self.train_index.values.reshape(-1,1),self.trainActiveCases)
+        regression.fit(self.train_index.values.reshape(-1,1),self.train_active)
         wn.filterwarnings("default")
         prediction = regression.predict(self.valid_index.values.reshape(-1,1))
-        errors = self.__errors(self.validActiveCases,prediction)
+        errors = self.__errors(self.valid_active,prediction)
         pred = regression.predict(self.daysSince.values.reshape(-1,1))
         return errors,pred
 
@@ -125,8 +104,8 @@ class Models:
 
     def __ARIMA(self, model):
         model_fit = model.fit()
-        prediction = model_fit.forecast(len(self.validActiveCases))
-        errors = self.__errors(self.validActiveCases,prediction)
+        prediction = model_fit.forecast(len(self.valid_active))
+        errors = self.__errors(self.valid_active,prediction)
         pred = pd.Series(prediction, self.valid_index)
         residuals = pd.DataFrame(model_fit.resid)
         return errors, pred, residuals
@@ -139,7 +118,7 @@ class Models:
             order = (0, 0, 2)
         elif method == 'ARIMA':
             order = (1, 1, 1)
-        model = ARIMA(self.trainActiveCases, order=order)
+        model = ARIMA(self.train_active, order=order)
         errors,pred,residuals = self.__ARIMA(model)
         # Plotting
         xData = [self.train_index.index, self.valid_index.index, self.valid_index.index]
@@ -165,13 +144,7 @@ class Models:
         plt.savefig(self.results_path + fileName)
 
     def plotResidualsARIMA(self, residuals, model):
-        resPath = self.results_path + 'residual\\'
-        try:
-            os.makedirs(resPath)
-        except OSError:
-            pass
-        finally:
-            residuals.plot()
-            plt.savefig(resPath + '{country}_{model}_residual_error.png'.format(country=self.country,model=model))
-            residuals.plot(kind='kde')
-            plt.savefig(resPath + '{country}_{model}_residual_error_kde.png'.format(country=self.country,model=model))
+        residuals.plot()
+        plt.savefig(self.resPath + '{country}_{model}_residual_error.png'.format(country=self.country,model=model))
+        residuals.plot(kind='kde')
+        plt.savefig(self.resPath + '{country}_{model}_residual_error_kde.png'.format(country=self.country,model=model))
