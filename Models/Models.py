@@ -28,6 +28,16 @@ class Models:
             lastDay = str(self.daysSince.index[-1].date())
         self.results_path = self.covidDB.createFolder(lastDay)
         self.resPath = self.covidDB.createFolder(lastDay + '\\residual\\')
+        
+        # Plotting Daily Cases
+        xData = [self.activecases.index]
+        yData = [self.activecases.values]
+        linestyle = ['-C0']
+        legends = ['Daily cases']
+        labels = ['Date Time','Active Cases']
+        fileName = '{country}_active_cases.png'.format(country=self.country)
+        title = 'Active case for ' + self.country
+        self.plot(xData, yData, linestyle, legends, labels, fileName, title)
 
     def selectData(self, train_percent=0.7, initDay=None, lastDay=None):
         state_data = self.getDailyCases()
@@ -36,7 +46,16 @@ class Models:
         state_data["Days Since"] = date_index - date_index[0]
         state_data["Days Since"] = state_data["Days Since"].dt.days
         self.daysSince = pd.Series(state_data['Days Since'].values, date_index)
-        self.activecases = pd.Series(state_data['Active Cases'].values, date_index)
+        if not initDay:
+            initDay = self.daysSince.index[0]
+        if not lastDay:
+            lastDay = self.daysSince.index[-1]
+        initDay = self.daysSince[initDay]
+        lastDay = self.daysSince[lastDay]
+        self.daysSince = self.daysSince[initDay:lastDay+1]
+        state_data = state_data[initDay:lastDay+1]
+
+        self.activecases = pd.Series(state_data['Active Cases'].values, self.daysSince.index)
 
         train_quantity = int(state_data.shape[0]*train_percent)
         train_ml = self.activecases[:train_quantity]
@@ -52,7 +71,6 @@ class Models:
         if country in ['Maharashtra','Delhi']:
             dailyCases = pd.read_csv(DATA_PATH + country + '.csv')
         else:
-            self.covidDB.plotDailyCases(country)
             dailyCases = self.covidDB.dailyCases(country)
             try:
                 dailyCases = dailyCases.loc[country].loc['']
@@ -72,9 +90,7 @@ class Models:
         return [RMSE,MAE,R2]
     
     def __regression(self, regression):
-        wn.filterwarnings("ignore")
         regression.fit(self.train_index.values.reshape(-1,1),self.train_active)
-        wn.filterwarnings("default")
         prediction = regression.predict(self.valid_index.values.reshape(-1,1))
         errors = self.__errors(self.valid_active,prediction)
         pred = regression.predict(self.daysSince.values.reshape(-1,1))
