@@ -38,15 +38,15 @@ if __name__ == "__main__":
     MAE.index.name = 'States'
     R2 = pd.DataFrame(columns=options_models, index=options.state)
     R2.index.name = 'States'
+    resultsPath = []
     for state in options.state:
-        # if state not in states:
-        #     print(state + ' is not available')
-        #     continue
-        # try:
         rmse = {}
         mae = {}
         r2 = {}
         models = Models(state)
+        p = models.results_path
+        if p not in resultsPath:
+            resultsPath.append(p)
         for model in options_models:
             if model in arima_models:
                 errors,pred = models.ARIMA(model)
@@ -66,4 +66,7 @@ if __name__ == "__main__":
     print(MAE.to_string())
     print('\nR2')
     print(R2.to_string())
+    print()
+    for p in resultsPath:
+        print('Results saved in: ', p)
     print()

@@ -118,5 +118,4 @@ class CovidDB:
         except OSError:
             pass
         finally:
-            # print('Results saved in: ', results_path)
             return results_path

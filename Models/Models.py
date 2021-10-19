@@ -45,8 +45,6 @@ class Models:
             os.makedirs(self.results_path)
         except OSError:
             pass
-        finally:
-            print('Results saved in: ', self.results_path)
 
     def getDailyCases(self, country=None):
         if not country:
