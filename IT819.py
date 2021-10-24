@@ -26,6 +26,7 @@ if __name__ == "__main__":
     parser.add_option('-c', '--countries', dest='countries', default='')
     parser.add_option('-f', '--first-day', dest='firstDay', default=None)
     parser.add_option('-l', '--last-day', dest='lastDay', default=None)
+    parser.add_option('-p', '--prediction', dest='prediction', type=int, default=0)
     options, args = parser.parse_args()
     options.countries = options.countries.split(',')
     opts_models = []
@@ -56,7 +57,7 @@ if __name__ == "__main__":
         rmse = {}
         mae = {}
         r2 = {}
-        models = Models(state,options.firstDay,options.lastDay)
+        models = Models(country=state, forecast=options.prediction, initDay=options.firstDay, lastDay=options.lastDay)
         p = models.results_path
         if p not in resultsPath:
             resultsPath.append(p)
