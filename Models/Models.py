@@ -27,8 +27,9 @@ class Models:
         self.selectData(forecast=forecast, initDay=initDay, lastDay=lastDay)
         lastDay = str(self.daysSince.index[-1].date())
         new_folder = '{lastDay}\\{firstDay}'.format(lastDay=lastDay,firstDay=self.firstDay)
-        self.results_path = self.covidDB.createFolder(new_folder)
-        self.resPath = self.covidDB.createFolder(new_folder + '\\residual\\')
+        self.plots_path = self.covidDB.createFolder(new_folder)
+        self.csv_path = self.covidDB.createFolder(new_folder + '\\csv')
+        self.resPath = self.covidDB.createFolder(new_folder + '\\residual')
         
         # Plotting Daily Cases
         xData = [self.activecases.index]
@@ -132,13 +133,30 @@ class Models:
         fileName = '{country}_regression_{model}.png'.format(country=self.country, model=method.lower())
         title = "Active Cases {model} Regression Prediction for {country}".format(country=self.country,model=method)
         self.plot(xData, yData, linestyle, legends, labels, fileName, title, vertical=vertical)
-        return errors, pred
+        return errors
 
-    def __ARIMA(self, model):
-        model_fit = model.fit()
-        prediction = model_fit.forecast(len(self.valid_active))
-        errors = self.__errors(self.valid_active,prediction)
-        pred = pd.Series(prediction, self.valid_index)
+    def __ARIMA(self, order):
+        preds = []
+        history = [x for x in self.train_active]
+        for val in self.valid_active:
+            model = ARIMA(history, order=order)
+            model_fit = model.fit()
+            prediction = model_fit.forecast()
+            preds.append(prediction[0])
+            history.append(val)
+            # history.append(np.array([prediction[0]]))
+        errors = self.__errors(self.valid_active,preds)
+        forecast = []
+        for fore in self.forecastDays:
+            model = ARIMA(history, order=order)
+            model_fit = model.fit()
+            prediction = model_fit.forecast()
+            forecast.append(prediction[0])
+            history.append(np.array([prediction[0]]))
+        # if not self.forecastDays.empty:
+        #     forecast = model_fit.forecast(len(self.forecastDays))
+        forecast = pd.Series(forecast, self.forecastDays.index)
+        pred = pd.Series(preds, self.valid_index)
         residuals = pd.DataFrame(model_fit.resid)
         return errors, pred, forecast, residuals
 
@@ -169,7 +187,7 @@ class Models:
         title = "Active Cases {model} Model Forecasting for {country}".format(country=self.country,model=method)
         self.plot(xData, yData, linestyle, legends, labels, fileName, title, vertical=vertical)
         self.plotResidualsARIMA(residuals, method)
-        return errors, pred
+        return errors
 
     def plot(self, xData, yData, lineStyle, legends, labels, fileName, title, **opts):
         plt.figure(figsize=(12,10))
@@ -183,7 +201,7 @@ class Models:
             for ver in opts['vertical']:
                 plt.axvline(x=ver, color='k', linestyle='--')
         plt.legend(loc=2)
-        plt.savefig(self.results_path + fileName)
+        plt.savefig(self.plots_path + fileName)
 
     def plotResidualsARIMA(self, residuals, model):
         residuals.plot()
