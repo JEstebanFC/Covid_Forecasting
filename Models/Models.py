@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from numpy.testing._private.utils import print_assert_equal
 import pandas as pd
 import datetime as dt
 import warnings as wn
@@ -20,14 +21,14 @@ from sklearn.preprocessing import PolynomialFeatures
 from statsmodels.tsa.arima.model import ARIMA
 
 class Models:
-    def __init__(self, country, initDay=None, lastDay=None):
+    def __init__(self, country, forecast=0, initDay=None, lastDay=None):
         self.country = country
         self.covidDB = CovidDB()
-        self.selectData(initDay=initDay, lastDay=lastDay)
-        if not lastDay:
-            lastDay = str(self.daysSince.index[-1].date())
-        self.results_path = self.covidDB.createFolder(lastDay)
-        self.resPath = self.covidDB.createFolder(lastDay + '\\residual\\')
+        self.selectData(forecast=forecast, initDay=initDay, lastDay=lastDay)
+        lastDay = str(self.daysSince.index[-1].date())
+        new_folder = '{lastDay}\\{firstDay}'.format(lastDay=lastDay,firstDay=self.firstDay)
+        self.results_path = self.covidDB.createFolder(new_folder)
+        self.resPath = self.covidDB.createFolder(new_folder + '\\residual\\')
         
         # Plotting Daily Cases
         xData = [self.activecases.index]
@@ -39,21 +40,33 @@ class Models:
         title = 'Active case for ' + self.country
         self.plot(xData, yData, linestyle, legends, labels, fileName, title)
 
-    def selectData(self, train_percent=0.7, initDay=None, lastDay=None):
+    def selectData(self, forecast=0, train_percent=0.7, initDay=None, lastDay=None):
         state_data = self.getDailyCases()
 
         date_index = pd.date_range(start=state_data['Date'].values[0], periods=len(state_data['Date']), freq='D')
         state_data["Days Since"] = date_index - date_index[0]
         state_data["Days Since"] = state_data["Days Since"].dt.days
         self.daysSince = pd.Series(state_data['Days Since'].values, date_index)
-        if not initDay:
-            initDay = self.daysSince.index[0]
-        if not lastDay:
+        if not lastDay or lastDay not in self.daysSince:    #Last condition assume there are data for every day inside the range
             lastDay = self.daysSince.index[-1]
-        initDay = self.daysSince[initDay]
         lastDay = self.daysSince[lastDay]
-        self.daysSince = self.daysSince[initDay:lastDay+1]
+        if not initDay:    #Last condition assume there are data for every day inside the range
+            initDay = 0
+        elif 'w' in initDay:
+            weeks = int(initDay.split('w')[0])
+            initDay = lastDay - 7*weeks
+            if initDay < 0:
+                initDay = 0
+        elif initDay not in self.daysSince:
+            initDay = 0
+        else:
+            initDay = self.daysSince[initDay]
         state_data = state_data[initDay:lastDay+1]
+        self.daysSince = self.daysSince[initDay:lastDay+1]
+        self.firstDay = str(self.daysSince.index[0].date())
+
+        forecast_index = pd.date_range(start=self.daysSince.index[-1], periods=forecast+1, freq='D')[1:]
+        self.forecastDays = pd.Series(range(lastDay+1, lastDay+1+forecast), forecast_index)
 
         self.activecases = pd.Series(state_data['Active Cases'].values, self.daysSince.index)
 
@@ -93,7 +106,7 @@ class Models:
         regression.fit(self.train_index.values.reshape(-1,1),self.train_active)
         prediction = regression.predict(self.valid_index.values.reshape(-1,1))
         errors = self.__errors(self.valid_active,prediction)
-        pred = regression.predict(self.daysSince.values.reshape(-1,1))
+        pred = regression.predict(self.daysSince.append(self.forecastDays).values.reshape(-1,1))
         return errors,pred
 
     def regression(self, method):
@@ -108,14 +121,17 @@ class Models:
             regression = make_pipeline(PolynomialFeatures(3), lasso_reg)
         errors,pred = self.__regression(regression)
         # Plotting
-        xData = [self.activecases.index,self.activecases.index]
+        xData = [self.activecases.index,self.activecases.index.append(self.forecastDays.index)]
         yData = [self.activecases.values,pred]
-        linestyle = ['-C0','--k']
+        vertical = [self.valid_index.index[0]]
+        if not self.forecastDays.empty:
+            vertical.append(self.forecastDays.index[0])
+        linestyle = ['-C0','-r']
         legends = ['Active Cases',"Predicted Active Cases: {model} Regression".format(model=method)]
         labels = ['Date Time','Active Cases']
         fileName = '{country}_regression_{model}.png'.format(country=self.country, model=method.lower())
         title = "Active Cases {model} Regression Prediction for {country}".format(country=self.country,model=method)
-        self.plot(xData, yData, linestyle, legends, labels, fileName, title)
+        self.plot(xData, yData, linestyle, legends, labels, fileName, title, vertical=vertical)
         return errors, pred
 
     def __ARIMA(self, model):
@@ -124,7 +140,7 @@ class Models:
         errors = self.__errors(self.valid_active,prediction)
         pred = pd.Series(prediction, self.valid_index)
         residuals = pd.DataFrame(model_fit.resid)
-        return errors, pred, residuals
+        return errors, pred, forecast, residuals
 
     def ARIMA(self, method):
         method = method.upper()
@@ -133,22 +149,29 @@ class Models:
         elif method == 'MA':
             order = (0, 0, 2)
         elif method == 'ARIMA':
-            order = (1, 1, 1)
-        model = ARIMA(self.train_active, order=order)
-        errors,pred,residuals = self.__ARIMA(model)
+            order = (5, 1, 0)
+            # order = (1, 1, 1)
+        errors,pred,forecast,residuals = self.__ARIMA(order)
         # Plotting
         xData = [self.train_index.index, self.valid_index.index, self.valid_index.index]
         yData = [self.train_active, self.valid_active, pred]
+        vertical = [self.valid_index.index[0]]
         linestyle = ['o-b','o-g','o-r']
-        legends = ['Train Data Set', 'Valid Data Set', 'Predicted '+ method]
+        legends = ['Train Data Set', 'Valid Data Set', 'Predicted '+ method + str(order).replace(' ','')]
+        if len(forecast) != 0:
+            xData.append(self.forecastDays.index)
+            yData.append(forecast)
+            linestyle.append('*-k')
+            legends.append('{days} of Forecast'.format(days=len(self.forecastDays)))
+            vertical.append(self.forecastDays.index[0])
         labels = ['Date Time','Active Cases']
-        fileName = '{country}_{model}.png'.format(country=self.country,model=method)
+        fileName = '{country}_{model}.png'.format(country=self.country, model=method + str(order))
         title = "Active Cases {model} Model Forecasting for {country}".format(country=self.country,model=method)
-        self.plot(xData, yData, linestyle, legends, labels, fileName, title)
+        self.plot(xData, yData, linestyle, legends, labels, fileName, title, vertical=vertical)
         self.plotResidualsARIMA(residuals, method)
         return errors, pred
 
-    def plot(self, xData, yData, lineStyle, legends, labels, fileName, title):
+    def plot(self, xData, yData, lineStyle, legends, labels, fileName, title, **opts):
         plt.figure(figsize=(12,10))
         plt.title(title)
         plt.xlabel(labels[0])
@@ -156,11 +179,14 @@ class Models:
         plt.xticks(rotation=45)
         for xd,yd,ls,l in zip(xData, yData, lineStyle, legends):
             plt.plot(xd, yd, ls, label=l)
+        if 'vertical' in opts:
+            for ver in opts['vertical']:
+                plt.axvline(x=ver, color='k', linestyle='--')
         plt.legend(loc=2)
         plt.savefig(self.results_path + fileName)
 
     def plotResidualsARIMA(self, residuals, model):
         residuals.plot()
-        plt.savefig(self.resPath + '{country}_{model}_residual_error.png'.format(country=self.country,model=model))
+        plt.savefig(self.resPath + '{country}_{model}_residual_error.png'.format(country=self.country, model=model))
         residuals.plot(kind='kde')
-        plt.savefig(self.resPath + '{country}_{model}_residual_error_kde.png'.format(country=self.country,model=model))
+        plt.savefig(self.resPath + '{country}_{model}_residual_error_kde.png'.format(country=self.country, model=model))
