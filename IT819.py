@@ -58,14 +58,14 @@ if __name__ == "__main__":
         mae = {}
         r2 = {}
         models = Models(country=state, forecast=options.prediction, initDay=options.firstDay, lastDay=options.lastDay)
-        p = models.results_path
+        p = models.plots_path
         if p not in resultsPath:
             resultsPath.append(p)
         for model in options_models:
             if model in arima_models:
-                errors,pred = models.ARIMA(model)
+                errors = models.ARIMA(model)
             if model in regression_models:
-                errors,pred = models.regression(model)
+                errors = models.regression(model)
             rmse[model] = errors[0]
             mae[model] = errors[1]
             r2[model] = errors[2]
