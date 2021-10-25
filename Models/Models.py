@@ -103,8 +103,20 @@ class Models:
         R2 = r2_score(validCases,prediction)
         return [RMSE,MAE,R2]
     
-    def __regression(self, regression):
-        regression.fit(self.train_index.values.reshape(-1,1),self.train_active)
+    def __regression(self, method, poly=3):
+        X_values = self.train_index.values.reshape(-1,1)
+        if method.lower() == 'linear':
+            regression = LinearRegression(normalize=True)
+        elif method.lower() == 'lasso':
+            lasso_reg = Lasso(alpha=.8,normalize=True, max_iter=1e5)
+            regression = make_pipeline(PolynomialFeatures(3), lasso_reg)
+        elif 'polynomial' in method.lower():
+            t = method.lower().split('polynomial')[-1]
+            if t:
+                poly = int(t)
+            regression = make_pipeline(PolynomialFeatures(degree=poly), LinearRegression())
+            # regression = make_pipeline(PolynomialFeatures(degree=poly), Ridge())
+        regression.fit(X_values,self.train_active)
         prediction = regression.predict(self.valid_index.values.reshape(-1,1))
         errors = self.__errors(self.valid_active,prediction)
         pred = regression.predict(self.daysSince.append(self.forecastDays).values.reshape(-1,1))
@@ -112,15 +124,7 @@ class Models:
 
     def regression(self, method):
         method = method.capitalize()
-        if method.lower() == 'linear':
-            regression = LinearRegression(normalize=True)
-        elif method.lower() == 'polynomial':
-            regression = PolynomialFeatures(degree = 7) 
-            regression = make_pipeline(PolynomialFeatures(3), Ridge())
-        elif method.lower() == 'lasso':
-            lasso_reg = Lasso(alpha=.8,normalize=True, max_iter=1e5)
-            regression = make_pipeline(PolynomialFeatures(3), lasso_reg)
-        errors,pred = self.__regression(regression)
+        errors,pred = self.__regression(method)
         # Plotting
         xData = [self.activecases.index,self.activecases.index.append(self.forecastDays.index)]
         yData = [self.activecases.values,pred]
