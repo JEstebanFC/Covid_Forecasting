@@ -45,6 +45,8 @@ if __name__ == "__main__":
             continue
         if model in regression_models or model in arima_models:
             options_models.append(model)
+        elif 'polynomial' in model:
+            options_models.append(model)
 
     RMSE = pd.DataFrame(columns=options_models, index=options.countries)
     RMSE.index.name = 'Countries'
@@ -64,7 +66,7 @@ if __name__ == "__main__":
         for model in options_models:
             if model in arima_models:
                 errors = models.ARIMA(model)
-            if model in regression_models:
+            if model in regression_models or 'polynomial' in model:
                 errors = models.regression(model)
             rmse[model] = errors[0]
             mae[model] = errors[1]
