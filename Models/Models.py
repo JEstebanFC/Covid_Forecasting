@@ -67,20 +67,21 @@ class Models:
         if initDay == None or initDay not in dailyCases:    #Assuming there is information for every day inside the range
             initDay = dailyCases.index[0]
         dailyCases = dailyCases[initDay:lastDay]
-        casesFrame = dailyCases.to_frame('Active Cases')
+        casesFrame = dailyCases.to_frame('Daily Cases')
         casesFrame["Days Since"] = casesFrame.index - casesFrame.index[0]
         casesFrame["Days Since"] = casesFrame["Days Since"].dt.days
         daysSince = pd.Series(casesFrame['Days Since'].values, casesFrame.index)
 
         self.createFolders(firstDay=str(initDay.date()), lastDay=str(lastDay.date()))
+        casesFrame.to_csv(self.csv_path + '{country}_daily_cases.csv'.format(country=country))
         # Plotting Daily Cases
         xData = [dailyCases.index]
         yData = [dailyCases.values]
         linestyle = ['-C0']
         legends = ['Daily cases']
-        labels = ['Date Time','Active Cases']
-        fileName = '{country}_active_cases.png'.format(country=country)
-        title = 'Active case for ' + country
+        labels = ['Date Time','Daily Cases']
+        fileName = '{country}_daily_cases.png'.format(country=country)
+        title = 'Daily case for ' + country
         self.plot(xData, yData, linestyle, legends, labels, fileName, title)
 
         return dailyCases,daysSince
@@ -120,10 +121,10 @@ class Models:
         if not self.forecastDays.empty:
             vertical.append(self.forecastDays.index[0])
         linestyle = ['-C0','-r']
-        legends = ['Active Cases',"Predicted Active Cases: {model} Regression".format(model=method)]
-        labels = ['Date Time','Active Cases']
+        legends = ['Daily Cases',"Predicted Daily Cases: {model} Regression".format(model=method)]
+        labels = ['Date Time','Daily Cases']
         fileName = '{country}_regression_{model}.png'.format(country=self.country, model=method.lower())
-        title = "Active Cases {model} Regression Prediction for {country}".format(country=self.country,model=method)
+        title = "Daily Cases {model} Regression Prediction for {country}".format(country=self.country,model=method)
         self.plot(xData, yData, linestyle, legends, labels, fileName, title, vertical=vertical)
         return errors
 
@@ -174,9 +175,9 @@ class Models:
             linestyle.append('*-k')
             legends.append('{days} of Forecast'.format(days=len(self.forecastDays)))
             vertical.append(self.forecastDays.index[0])
-        labels = ['Date Time','Active Cases']
+        labels = ['Date Time','Daily Cases']
         fileName = '{country}_{model}.png'.format(country=self.country, model=method + str(order))
-        title = "Active Cases {model} Model Forecasting for {country}".format(country=self.country,model=method)
+        title = "Daily Cases {model} Model Forecasting for {country}".format(country=self.country,model=method)
         self.plot(xData, yData, linestyle, legends, labels, fileName, title, vertical=vertical)
         self.plotResidualsARIMA(residuals, method)
         return errors
