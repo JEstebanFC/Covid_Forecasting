@@ -26,9 +26,9 @@ class Models:
         self.covidDB = CovidDB()
         
     def selectData(self, initDay=None, lastDay=None, forecast=0, train_percent=0.7):
-        self.activecases,self.daysSince = self.getDailyCases(country=self.country, initDay=initDay, lastDay=lastDay)
+        self.activecases,self.daysSince = self.getDailyCases(initDay=initDay, lastDay=lastDay)
         if self.activecases.empty:
-            return
+            return pd.Series()
         lastDay = self.daysSince.values[-1]
         forecast_index = pd.date_range(start=self.daysSince.index[-1], periods=forecast+1, freq='D')[1:]
         self.forecastDays = pd.Series(range(lastDay+1, lastDay+1+forecast), forecast_index)
@@ -47,9 +47,8 @@ class Models:
         self.csv_path = self.covidDB.createFolder(new_folder + '\\csv')
         self.resPath = self.covidDB.createFolder(new_folder + '\\residual')
 
-    def getDailyCases(self, country=None, initDay=None, lastDay=None):
-        if not country:
-            country = self.country
+    def getDailyCases(self, initDay=None, lastDay=None):
+        country = self.country
         dailyCases = self.covidDB.dailyCases(country)
         if dailyCases.empty:
             print('Error: No data found for the country selected')
@@ -61,20 +60,22 @@ class Models:
         
         if not lastDay or lastDay not in dailyCases:        #Assuming there is information for every day inside the range
             lastDay = dailyCases.index[-1]
+        lastDay = pd.to_datetime(lastDay)
         if initDay != None and 'w' in initDay:
             weeks = int(initDay.split('w')[0])
             initDay = lastDay - pd.DateOffset(7*weeks)
         if initDay == None or initDay not in dailyCases:    #Assuming there is information for every day inside the range
             initDay = dailyCases.index[0]
+        initDay = pd.to_datetime(initDay)
         dailyCases = dailyCases[initDay:lastDay]
         casesFrame = dailyCases.to_frame('Daily Cases')
         casesFrame["Days Since"] = casesFrame.index - casesFrame.index[0]
         casesFrame["Days Since"] = casesFrame["Days Since"].dt.days
         daysSince = pd.Series(casesFrame['Days Since'].values, casesFrame.index)
-
+        #Reports
         self.createFolders(firstDay=str(initDay.date()), lastDay=str(lastDay.date()))
         casesFrame.to_csv(self.csv_path + '{country}_daily_cases.csv'.format(country=country))
-        # Plotting Daily Cases
+        #Plotting Daily Cases
         xData = [dailyCases.index]
         yData = [dailyCases.values]
         linestyle = ['-C0']
@@ -126,7 +127,7 @@ class Models:
         fileName = '{country}_regression_{model}.png'.format(country=self.country, model=method.lower())
         title = "Daily Cases {model} Regression Prediction for {country}".format(country=self.country,model=method)
         self.plot(xData, yData, linestyle, legends, labels, fileName, title, vertical=vertical)
-        return errors
+        return errors,pred
 
     def __ARIMA(self, order):
         preds = []
@@ -180,7 +181,7 @@ class Models:
         title = "Daily Cases {model} Model Forecasting for {country}".format(country=self.country,model=method)
         self.plot(xData, yData, linestyle, legends, labels, fileName, title, vertical=vertical)
         self.plotResidualsARIMA(residuals, method)
-        return errors
+        return errors,pred,forecast
 
     def plot(self, xData, yData, lineStyle, legends, labels, fileName, title, **opts):
         plt.figure(figsize=(12,10))

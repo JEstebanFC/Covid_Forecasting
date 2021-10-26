@@ -60,15 +60,17 @@ if __name__ == "__main__":
         mae = {}
         r2 = {}
         models = Models(country=state)
-        models.selectData(initDay=options.firstDay, lastDay=options.lastDay, forecast=options.prediction)
+        t = models.selectData(initDay=options.firstDay, lastDay=options.lastDay, forecast=options.prediction)
+        if t.empty:
+            continue
         p = models.plots_path
         if p not in resultsPath:
             resultsPath.append(p)
         for model in options_models:
             if model in arima_models:
-                errors = models.ARIMA(model)
+                errors,pred,forecast = models.ARIMA(model)
             if model in regression_models or 'polynomial' in model:
-                errors = models.regression(model)
+                errors,pred = models.regression(model)
             rmse[model] = errors[0]
             mae[model] = errors[1]
             r2[model] = errors[2]
