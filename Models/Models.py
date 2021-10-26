@@ -21,32 +21,14 @@ from sklearn.preprocessing import PolynomialFeatures
 from statsmodels.tsa.arima.model import ARIMA
 
 class Models:
-    def __init__(self, country, initDay=None, lastDay=None, forecast=0):
+    def __init__(self, country):
         self.country = country
         self.covidDB = CovidDB()
-        self.selectData(forecast=forecast, initDay=initDay, lastDay=lastDay)
-        firstDay = str(self.daysSince.index[0].date())
-        lastDay = str(self.daysSince.index[-1].date())
-        new_folder = '{lastDay}\\{firstDay}'.format(lastDay=lastDay,firstDay=firstDay)
-        self.plots_path = self.covidDB.createFolder(new_folder)
-        self.csv_path = self.covidDB.createFolder(new_folder + '\\csv')
-        self.resPath = self.covidDB.createFolder(new_folder + '\\residual')
         
-        # Plotting Daily Cases
-        xData = [self.activecases.index]
-        yData = [self.activecases.values]
-        linestyle = ['-C0']
-        legends = ['Daily cases']
-        labels = ['Date Time','Active Cases']
-        fileName = '{country}_active_cases.png'.format(country=self.country)
-        title = 'Active case for ' + self.country
-        self.plot(xData, yData, linestyle, legends, labels, fileName, title)
-
-    def selectData(self, forecast=0, train_percent=0.7, initDay=None, lastDay=None):
+    def selectData(self, initDay=None, lastDay=None, forecast=0, train_percent=0.7):
         self.activecases,self.daysSince = self.getDailyCases(country=self.country, initDay=initDay, lastDay=lastDay)
         if self.activecases.empty:
             return
-
         lastDay = self.daysSince.values[-1]
         forecast_index = pd.date_range(start=self.daysSince.index[-1], periods=forecast+1, freq='D')[1:]
         self.forecastDays = pd.Series(range(lastDay+1, lastDay+1+forecast), forecast_index)
@@ -58,6 +40,12 @@ class Models:
         self.valid_index = self.daysSince[train_quantity:]
         self.train_active = train_ml.values.reshape(-1,1)
         self.valid_active = valid_ml.values.reshape(-1,1)
+
+    def createFolders(self, firstDay, lastDay):
+        new_folder = '{lastDay}\\{firstDay}'.format(lastDay=lastDay,firstDay=firstDay)
+        self.plots_path = self.covidDB.createFolder(new_folder)
+        self.csv_path = self.covidDB.createFolder(new_folder + '\\csv')
+        self.resPath = self.covidDB.createFolder(new_folder + '\\residual')
 
     def getDailyCases(self, country=None, initDay=None, lastDay=None):
         if not country:
@@ -79,11 +67,22 @@ class Models:
         if initDay == None or initDay not in dailyCases:    #Assuming there is information for every day inside the range
             initDay = dailyCases.index[0]
         dailyCases = dailyCases[initDay:lastDay]
-
         casesFrame = dailyCases.to_frame('Active Cases')
         casesFrame["Days Since"] = casesFrame.index - casesFrame.index[0]
         casesFrame["Days Since"] = casesFrame["Days Since"].dt.days
         daysSince = pd.Series(casesFrame['Days Since'].values, casesFrame.index)
+
+        self.createFolders(firstDay=str(initDay.date()), lastDay=str(lastDay.date()))
+        # Plotting Daily Cases
+        xData = [dailyCases.index]
+        yData = [dailyCases.values]
+        linestyle = ['-C0']
+        legends = ['Daily cases']
+        labels = ['Date Time','Active Cases']
+        fileName = '{country}_active_cases.png'.format(country=country)
+        title = 'Active case for ' + country
+        self.plot(xData, yData, linestyle, legends, labels, fileName, title)
+
         return dailyCases,daysSince
 
     def __errors(self,validCases,prediction):
