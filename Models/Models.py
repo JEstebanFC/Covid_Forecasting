@@ -43,13 +43,9 @@ class Models:
         self.plot(xData, yData, linestyle, legends, labels, fileName, title)
 
     def selectData(self, forecast=0, train_percent=0.7, initDay=None, lastDay=None):
-        state_data = self.getDailyCases()
-        if state_data.empty:
+        self.activecases,self.daysSince = self.getDailyCases()
+        if self.activecases.empty:
             return
-        date_index = pd.date_range(start=state_data['Date'].values[0], periods=len(state_data['Date']), freq='D')
-        state_data["Days Since"] = date_index - date_index[0]
-        state_data["Days Since"] = state_data["Days Since"].dt.days
-        self.daysSince = pd.Series(state_data['Days Since'].values, date_index)
         if not lastDay or lastDay not in self.daysSince:    #Last condition assume there are data for every day inside the range
             lastDay = self.daysSince.index[-1]
         lastDay = self.daysSince[lastDay]
@@ -65,13 +61,13 @@ class Models:
         else:
             initDay = self.daysSince[initDay]
 
-        state_data = state_data[initDay:lastDay+1]
+        self.activecases = self.activecases[initDay:lastDay+1]
         self.daysSince = self.daysSince[initDay:lastDay+1]
-        self.activecases = pd.Series(state_data['Active Cases'].values, self.daysSince.index)
+        # self.activecases = pd.Series(state_data['Active Cases'].values, self.daysSince.index)
         forecast_index = pd.date_range(start=self.daysSince.index[-1], periods=forecast+1, freq='D')[1:]
         self.forecastDays = pd.Series(range(lastDay+1, lastDay+1+forecast), forecast_index)
 
-        train_quantity = int(state_data.shape[0]*train_percent)
+        train_quantity = int(self.activecases.shape[0]*train_percent)
         train_ml = self.activecases[:train_quantity]
         valid_ml = self.activecases[train_quantity:]
         self.train_index = self.daysSince[:train_quantity]
@@ -85,17 +81,16 @@ class Models:
         dailyCases = self.covidDB.dailyCases(country)
         if dailyCases.empty:
             print('Error: No data found for the country selected')
-            return pd.Series()
+            return pd.Series(),pd.Series()
         try:
             dailyCases = dailyCases.loc[country].loc['']
         except:
             dailyCases = dailyCases.loc[country].sum()
-        dailyCases.index.name = 'Date'
-        dailyCases = dailyCases.to_frame('Active Cases')
-        dailyCases = dailyCases.reset_index()
-        dailyCases.fillna(0)
-        # dailyCases["Active Cases"].replace({0:1}, inplace=True)
-        return dailyCases
+        casesFrame = dailyCases.to_frame('Active Cases')
+        casesFrame["Days Since"] = casesFrame.index - casesFrame.index[0]
+        casesFrame["Days Since"] = casesFrame["Days Since"].dt.days
+        daysSince = pd.Series(casesFrame['Days Since'].values, casesFrame.index)
+        return dailyCases,daysSince
 
     def __errors(self,validCases,prediction):
         RMSE = np.sqrt(mse(validCases,prediction))
