@@ -66,7 +66,7 @@ class CovidDB:
             countries = [countries]
         countries = [x for x in countries if x in self.confirmed.index]
         if not countries:
-            return
+            return pd.Series()
         accumulativeCases = self.confirmed.loc[countries]
         return accumulativeCases
 
@@ -85,7 +85,7 @@ class CovidDB:
         '''
         accumulativeCases = self.accumulativeCases(countries)
         if accumulativeCases.empty:
-            return
+            return pd.Series()
         ac = accumulativeCases.reset_index()
         ac['Province/State'] = ac['Province/State'].fillna('')
         ac = ac.set_index(['Country/Region','Province/State'])
