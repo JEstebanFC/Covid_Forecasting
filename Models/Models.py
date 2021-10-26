@@ -44,6 +44,8 @@ class Models:
 
     def selectData(self, forecast=0, train_percent=0.7, initDay=None, lastDay=None):
         state_data = self.getDailyCases()
+        if state_data.empty:
+            return
         date_index = pd.date_range(start=state_data['Date'].values[0], periods=len(state_data['Date']), freq='D')
         state_data["Days Since"] = date_index - date_index[0]
         state_data["Days Since"] = state_data["Days Since"].dt.days
@@ -80,17 +82,17 @@ class Models:
     def getDailyCases(self, country=None):
         if not country:
             country = self.country
-        if country in ['Maharashtra','Delhi']:
-            dailyCases = pd.read_csv(DATA_PATH + country + '.csv')
-        else:
-            dailyCases = self.covidDB.dailyCases(country)
-            try:
-                dailyCases = dailyCases.loc[country].loc['']
-            except:
-                dailyCases = dailyCases.loc[country].sum()
-            dailyCases.index.name = 'Date'
-            dailyCases = dailyCases.to_frame('Active Cases')
-            dailyCases = dailyCases.reset_index()
+        dailyCases = self.covidDB.dailyCases(country)
+        if dailyCases.empty:
+            print('Error: No data found for the country selected')
+            return
+        try:
+            dailyCases = dailyCases.loc[country].loc['']
+        except:
+            dailyCases = dailyCases.loc[country].sum()
+        dailyCases.index.name = 'Date'
+        dailyCases = dailyCases.to_frame('Active Cases')
+        dailyCases = dailyCases.reset_index()
         dailyCases.fillna(0)
         # dailyCases["Active Cases"].replace({0:1}, inplace=True)
         return dailyCases
