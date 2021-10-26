@@ -59,7 +59,7 @@ if __name__ == "__main__":
         rmse = {}
         mae = {}
         r2 = {}
-        models = Models(country=state, forecast=options.prediction, initDay=options.firstDay, lastDay=options.lastDay)
+        models = Models(country=state, initDay=options.firstDay, lastDay=options.lastDay, forecast=options.prediction)
         p = models.plots_path
         if p not in resultsPath:
             resultsPath.append(p)
