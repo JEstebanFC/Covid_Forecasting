@@ -64,6 +64,9 @@ class CovidDB:
         '''Return the accumulative cases'''
         if type(countries) != list:
             countries = [countries]
+        countries = [x for x in countries if x in self.confirmed.index]
+        if not countries:
+            return
         accumulativeCases = self.confirmed.loc[countries]
         return accumulativeCases
 
@@ -81,6 +84,8 @@ class CovidDB:
                 dailyCases.loc['India'].loc['']
         '''
         accumulativeCases = self.accumulativeCases(countries)
+        if accumulativeCases.empty:
+            return
         ac = accumulativeCases.reset_index()
         ac['Province/State'] = ac['Province/State'].fillna('')
         ac = ac.set_index(['Country/Region','Province/State'])
@@ -96,6 +101,9 @@ class CovidDB:
             countries = [countries]
         for country in countries:
             dailyCases = self.dailyCases(country)
+            if not dailyCases:
+                print('Error: No data found for', country)
+                continue
             try:
                 data = dailyCases.loc[country].loc['']
             except:
