@@ -21,7 +21,7 @@ from sklearn.preprocessing import PolynomialFeatures
 from statsmodels.tsa.arima.model import ARIMA
 
 class Models:
-    def __init__(self, country, forecast=0, initDay=None, lastDay=None):
+    def __init__(self, country, initDay=None, lastDay=None, forecast=0):
         self.country = country
         self.covidDB = CovidDB()
         self.selectData(forecast=forecast, initDay=initDay, lastDay=lastDay)
@@ -43,27 +43,11 @@ class Models:
         self.plot(xData, yData, linestyle, legends, labels, fileName, title)
 
     def selectData(self, forecast=0, train_percent=0.7, initDay=None, lastDay=None):
-        self.activecases,self.daysSince = self.getDailyCases()
+        self.activecases,self.daysSince = self.getDailyCases(country=self.country, initDay=initDay, lastDay=lastDay)
         if self.activecases.empty:
             return
-        if not lastDay or lastDay not in self.daysSince:    #Last condition assume there are data for every day inside the range
-            lastDay = self.daysSince.index[-1]
-        lastDay = self.daysSince[lastDay]
-        if not initDay:    #Last condition assume there are data for every day inside the range
-            initDay = 0
-        elif 'w' in initDay:
-            weeks = int(initDay.split('w')[0])
-            initDay = lastDay - 7*weeks
-            if initDay < 0:
-                initDay = 0
-        elif initDay not in self.daysSince:
-            initDay = 0
-        else:
-            initDay = self.daysSince[initDay]
 
-        self.activecases = self.activecases[initDay:lastDay+1]
-        self.daysSince = self.daysSince[initDay:lastDay+1]
-        # self.activecases = pd.Series(state_data['Active Cases'].values, self.daysSince.index)
+        lastDay = self.daysSince.values[-1]
         forecast_index = pd.date_range(start=self.daysSince.index[-1], periods=forecast+1, freq='D')[1:]
         self.forecastDays = pd.Series(range(lastDay+1, lastDay+1+forecast), forecast_index)
 
@@ -75,7 +59,7 @@ class Models:
         self.train_active = train_ml.values.reshape(-1,1)
         self.valid_active = valid_ml.values.reshape(-1,1)
 
-    def getDailyCases(self, country=None):
+    def getDailyCases(self, country=None, initDay=None, lastDay=None):
         if not country:
             country = self.country
         dailyCases = self.covidDB.dailyCases(country)
@@ -86,6 +70,16 @@ class Models:
             dailyCases = dailyCases.loc[country].loc['']
         except:
             dailyCases = dailyCases.loc[country].sum()
+        
+        if not lastDay or lastDay not in dailyCases:        #Assuming there is information for every day inside the range
+            lastDay = dailyCases.index[-1]
+        if initDay != None and 'w' in initDay:
+            weeks = int(initDay.split('w')[0])
+            initDay = lastDay - pd.DateOffset(7*weeks)
+        if initDay == None or initDay not in dailyCases:    #Assuming there is information for every day inside the range
+            initDay = dailyCases.index[0]
+        dailyCases = dailyCases[initDay:lastDay]
+
         casesFrame = dailyCases.to_frame('Active Cases')
         casesFrame["Days Since"] = casesFrame.index - casesFrame.index[0]
         casesFrame["Days Since"] = casesFrame["Days Since"].dt.days
