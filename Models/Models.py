@@ -25,8 +25,9 @@ class Models:
         self.country = country
         self.covidDB = CovidDB()
         self.selectData(forecast=forecast, initDay=initDay, lastDay=lastDay)
+        firstDay = str(self.daysSince.index[0].date())
         lastDay = str(self.daysSince.index[-1].date())
-        new_folder = '{lastDay}\\{firstDay}'.format(lastDay=lastDay,firstDay=self.firstDay)
+        new_folder = '{lastDay}\\{firstDay}'.format(lastDay=lastDay,firstDay=firstDay)
         self.plots_path = self.covidDB.createFolder(new_folder)
         self.csv_path = self.covidDB.createFolder(new_folder + '\\csv')
         self.resPath = self.covidDB.createFolder(new_folder + '\\residual')
@@ -43,7 +44,6 @@ class Models:
 
     def selectData(self, forecast=0, train_percent=0.7, initDay=None, lastDay=None):
         state_data = self.getDailyCases()
-
         date_index = pd.date_range(start=state_data['Date'].values[0], periods=len(state_data['Date']), freq='D')
         state_data["Days Since"] = date_index - date_index[0]
         state_data["Days Since"] = state_data["Days Since"].dt.days
@@ -62,14 +62,12 @@ class Models:
             initDay = 0
         else:
             initDay = self.daysSince[initDay]
+
         state_data = state_data[initDay:lastDay+1]
         self.daysSince = self.daysSince[initDay:lastDay+1]
-        self.firstDay = str(self.daysSince.index[0].date())
-
+        self.activecases = pd.Series(state_data['Active Cases'].values, self.daysSince.index)
         forecast_index = pd.date_range(start=self.daysSince.index[-1], periods=forecast+1, freq='D')[1:]
         self.forecastDays = pd.Series(range(lastDay+1, lastDay+1+forecast), forecast_index)
-
-        self.activecases = pd.Series(state_data['Active Cases'].values, self.daysSince.index)
 
         train_quantity = int(state_data.shape[0]*train_percent)
         train_ml = self.activecases[:train_quantity]
