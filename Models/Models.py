@@ -85,7 +85,7 @@ class Models:
         dailyCases = self.covidDB.dailyCases(country)
         if dailyCases.empty:
             print('Error: No data found for the country selected')
-            return
+            return pd.Series()
         try:
             dailyCases = dailyCases.loc[country].loc['']
         except:
