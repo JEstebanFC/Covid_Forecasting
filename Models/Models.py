@@ -42,12 +42,6 @@ class Models:
         self.valid_active = valid_ml.values.reshape(-1,1)
         return pd.Series(True)
 
-    def createFolders(self, firstDay, lastDay):
-        new_folder = '{lastDay}\\{firstDay}'.format(lastDay=lastDay,firstDay=firstDay)
-        self.plots_path = self.covidDB.createFolder(new_folder)
-        self.csv_path = self.covidDB.createFolder(new_folder + '\\csv')
-        self.resPath = self.covidDB.createFolder(new_folder + '\\residual')
-
     def getDailyCases(self, initDay=None, lastDay=None):
         country = self.country
         dailyCases = self.covidDB.dailyCases(country)
@@ -73,7 +67,10 @@ class Models:
         casesFrame["Days Since"] = casesFrame["Days Since"].dt.days
         daysSince = pd.Series(casesFrame['Days Since'].values, casesFrame.index)
         #Reports
-        self.createFolders(firstDay=str(initDay.date()), lastDay=str(lastDay.date()))
+        new_folder = '{lastDay}\\{firstDay}'.format(lastDay=str(lastDay.date()),firstDay=str(initDay.date()))
+        self.plots_path = self.covidDB.createFolder(new_folder)
+        self.csv_path = self.covidDB.createFolder(new_folder + '\\csv')
+        self.resPath = self.covidDB.createFolder(new_folder + '\\residual')
         casesFrame.to_csv(self.csv_path + '{country}_daily_cases.csv'.format(country=country))
         #Plotting Daily Cases
         xData = [dailyCases.index]
