@@ -55,13 +55,14 @@ if __name__ == "__main__":
     R2 = pd.DataFrame(columns=options_models, index=options.countries)
     R2.index.name = 'Countries'
     resultsPath = []
-    for state in options.countries:
+    for country in options.countries:
         rmse = {}
         mae = {}
         r2 = {}
-        models = Models(country=state)
+        models = Models(country=country)
         t = models.selectData(initDay=options.firstDay, lastDay=options.lastDay, forecast=options.prediction)
         if t.empty:
+            print('Error: No data found for ' + country)
             continue
         p = models.plots_path
         if p not in resultsPath:
@@ -74,9 +75,9 @@ if __name__ == "__main__":
             rmse[model] = errors[0]
             mae[model] = errors[1]
             r2[model] = errors[2]
-        RMSE.loc[state] = rmse
-        MAE.loc[state] = mae
-        R2.loc[state] = r2
+        RMSE.loc[country] = rmse
+        MAE.loc[country] = mae
+        R2.loc[country] = r2
     print(color.BOLD + '\nRMSE' + color.END)
     print(RMSE.to_string())
     print(color.BOLD + '\nMAE' + color.END)

@@ -28,7 +28,7 @@ class Models:
     def selectData(self, initDay=None, lastDay=None, forecast=0, train_percent=0.7):
         self.activecases,self.daysSince = self.getDailyCases(initDay=initDay, lastDay=lastDay)
         if self.activecases.empty:
-            return pd.Series()
+            return pd.Series(dtype='object')
         lastDay = self.daysSince.values[-1]
         forecast_index = pd.date_range(start=self.daysSince.index[-1], periods=forecast+1, freq='D')[1:]
         self.forecastDays = pd.Series(range(lastDay+1, lastDay+1+forecast), forecast_index)
@@ -40,6 +40,7 @@ class Models:
         self.valid_index = self.daysSince[train_quantity:]
         self.train_active = train_ml.values.reshape(-1,1)
         self.valid_active = valid_ml.values.reshape(-1,1)
+        return pd.Series(True)
 
     def createFolders(self, firstDay, lastDay):
         new_folder = '{lastDay}\\{firstDay}'.format(lastDay=lastDay,firstDay=firstDay)
@@ -51,8 +52,7 @@ class Models:
         country = self.country
         dailyCases = self.covidDB.dailyCases(country)
         if dailyCases.empty:
-            print('Error: No data found for the country selected')
-            return pd.Series(),pd.Series()
+            return pd.Series(dtype='object'),pd.Series(dtype='object')
         try:
             dailyCases = dailyCases.loc[country].loc['']
         except:
