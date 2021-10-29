@@ -11,14 +11,17 @@ from Utils.CovidDB import CovidDB
 
 from Models import DATA_PATH, RESULTS_PATH
 
-from sklearn.pipeline import make_pipeline
+from statsmodels.tsa.arima.model import ARIMA
+
 from sklearn.metrics import r2_score
+from sklearn.pipeline import make_pipeline
 from sklearn.metrics import mean_squared_error as mse
 from sklearn.metrics import mean_absolute_error as mae
-from sklearn.linear_model import Ridge, Lasso
-from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import PolynomialFeatures
-from statsmodels.tsa.arima.model import ARIMA
+from sklearn.linear_model import Ridge, Lasso, LinearRegression
+from sklearn.preprocessing import MinMaxScaler, PolynomialFeatures
+
+from keras.models import Sequential
+from keras.layers import Dense, LSTM
 
 class Models:
     def __init__(self, country):
@@ -162,11 +165,11 @@ class Models:
             # order = (1, 1, 1)
         errors,pred,forecast,residuals = self.__ARIMA(order)
         # Plotting
-        xData = [self.train_index.index, self.valid_index.index, self.valid_index.index]
-        yData = [self.train_active, self.valid_active, pred]
+        xData = [self.activecases.index, self.valid_index.index]
+        yData = [self.activecases.values, pred]
         vertical = [self.valid_index.index[0]]
-        linestyle = ['o-b','o-g','o-r']
-        legends = ['Train Data Set', 'Valid Data Set', 'Predicted '+ method + str(order).replace(' ','')]
+        linestyle = ['o-C0','o-r']
+        legends = ['Daily Cases', 'Predicted '+ method + str(order).replace(' ','')]
         if len(forecast) != 0:
             xData.append(self.forecastDays.index)
             yData.append(forecast)
@@ -199,3 +202,101 @@ class Models:
         plt.savefig(self.resPath + '{country}_{model}_residual_error.png'.format(country=self.country, model=model))
         residuals.plot(kind='kde')
         plt.savefig(self.resPath + '{country}_{model}_residual_error_kde.png'.format(country=self.country, model=model))
+
+    #LSTM
+    def timeseries_to_supervised(self, data, lag=1):
+        df = pd.DataFrame(data)
+        columns = [df.shift(i) for i in range(1, lag+1)]
+        columns.append(df)
+        df = pd.concat(columns, axis=1)
+        df.fillna(0, inplace=True)
+        return df
+
+    def difference(self, dataset, interval=1):
+        diff = [0]
+        for i in range(interval, len(dataset)):
+            value = dataset[i] - dataset[i - interval]
+            diff.append(value)
+        return pd.Series(diff)
+
+    def scale(self, train, test):
+        # fit scaler
+        scaler = MinMaxScaler(feature_range=(-1, 1))
+        scaler = scaler.fit(train)
+        # transform train
+        train = train.reshape(train.shape[0], train.shape[1])
+        train_scaled = scaler.transform(train)
+        # transform test
+        test = test.reshape(test.shape[0], test.shape[1])
+        test_scaled = scaler.transform(test)
+        return scaler, train_scaled, test_scaled
+
+    def fit_lstm(self, train, batch_size, nb_epoch, neurons):
+        X, y = train[:, 0:-1], train[:, -1]
+        X = X.reshape(X.shape[0], 1, X.shape[1])
+        model = Sequential()
+        model.add(LSTM(neurons, batch_input_shape=(batch_size, X.shape[1], X.shape[2]), stateful=True))
+        model.add(Dense(1))
+        model.compile(loss='mean_squared_error', optimizer='adam')
+        for i in range(nb_epoch):
+            model.fit(X, y, epochs=1, batch_size=batch_size, verbose=0, shuffle=False)
+            model.reset_states()
+        return model
+
+    def invert_scale(self, scaler, X, value):
+        new_row = [x for x in X] + [value]
+        array = np.array(new_row)
+        array = array.reshape(1, len(array))
+        inverted = scaler.inverse_transform(array)
+        return inverted[0, -1]
+
+    def inverse_difference(self, history, yhat, interval=1):
+	    return yhat + history[-interval]
+
+    def forecast_lstm(self, model, batch_size, X):
+        X = X.reshape(1, 1, len(X))
+        yhat = model.predict(X, batch_size=batch_size)
+        return yhat[0,0]
+
+    def LSTM(self, train_percent=0.7):
+        method = 'LSTM'
+        train_quantity = int(self.activecases.shape[0]*train_percent)
+        diff_values = self.difference(self.activecases, 1)
+        supervised = self.timeseries_to_supervised(diff_values, 1)
+        supervised_values = supervised.values
+        train = supervised_values[:train_quantity]
+        test = supervised_values[train_quantity:]
+        scaler, train_scaled, test_scaled = self.scale(train, test)
+        lstm_model = self.fit_lstm(train_scaled, 1, 3000, 4)
+        train_reshaped = train_scaled[:, 0].reshape(len(train_scaled), 1, 1)
+        self.temp = lstm_model.predict(train_reshaped, batch_size=1)
+        predictions = list()
+        for i in range(len(test_scaled)):
+            # make one-step forecast
+            X, y = test_scaled[i, 0:-1], test_scaled[i, -1]
+            yhat = self.forecast_lstm(lstm_model, 1, X)
+            # invert scaling
+            yhat = self.invert_scale(scaler, X, yhat)
+            # invert differencing
+            yhat = self.inverse_difference(self.activecases.values, yhat, len(test_scaled)+1-i)
+            if yhat < 0:
+                yhat *= -1
+            # store forecast
+            predictions.append(yhat)
+            # expected = self.activecases.values[len(train) + i]
+            # expected = int(self.valid_active[i])
+            # print('Month=%d, Predicted=%f, Expected=%f' % (i+1, yhat, expected))
+
+        errors = self.__errors(self.valid_active,predictions)
+
+        xData = [self.activecases.index, self.valid_index.index]
+        yData = [self.activecases.values, predictions]
+        vertical = [self.valid_index.index[0]]
+        linestyle = ['o-C0','o-r']
+        legends = ['Daily Cases', 'Predicted '+ method]
+        labels = ['Date Time','Daily Cases']
+        fileName = '{country}_{model}.png'.format(country=self.country, model=method.lower())
+        title = "Daily Cases {model} Prediction for {country}".format(country=self.country,model=method)
+        self.plot(xData, yData, linestyle, legends, labels, fileName, title, vertical=vertical)
+        return errors,predictions
+

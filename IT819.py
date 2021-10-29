@@ -43,7 +43,7 @@ if __name__ == "__main__":
     for model in opts_models:
         if model in options_models:
             continue
-        if model in regression_models or model in arima_models:
+        if model in regression_models or model in arima_models or model.lower() == 'lstm':
             options_models.append(model)
         elif 'polynomial' in model:
             options_models.append(model)
@@ -68,10 +68,13 @@ if __name__ == "__main__":
         if p not in resultsPath:
             resultsPath.append(p)
         for model in options_models:
+            print('Starting with {country} using {model} model'.format(country=country,model=model))
             if model in arima_models:
                 errors,pred,forecast = models.ARIMA(model)
             if model in regression_models or 'polynomial' in model:
                 errors,pred = models.regression(model)
+            if model.lower() == 'lstm':
+                errors,pred = models.LSTM()
             rmse[model] = errors[0]
             mae[model] = errors[1]
             r2[model] = errors[2]
@@ -88,3 +91,6 @@ if __name__ == "__main__":
     for p in resultsPath:
         print('\t',p)
     print()
+    errors = pd.concat([RMSE,MAE,R2],keys=['RMSE','MAE','R2'],axis=0)
+    errors.to_csv(resultsPath[0] + 'csv\\errors.csv')
+
