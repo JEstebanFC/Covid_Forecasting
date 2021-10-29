@@ -155,17 +155,8 @@ class Models:
         residuals = pd.DataFrame(model_fit.resid)
         return errors, pred, forecast, residuals
 
-    def ARIMA(self, method):
-        method = method.upper()
-        if method == 'AR':
-            order = (2, 0, 0)
-            method = 'ARIMA'
-        elif method == 'MA':
-            order = (0, 0, 2)
-            method = 'ARIMA'
-        elif method == 'ARIMA':
-            order = (5, 1, 0)
-            # order = (1, 1, 1)
+    def ARIMA(self, order):
+        method = 'ARIMA'
         errors,pred,forecast,residuals = self.__ARIMA(order)
         # Plotting
         xData = [self.activecases.index, self.valid_index.index]
