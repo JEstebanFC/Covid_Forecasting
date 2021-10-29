@@ -6,6 +6,7 @@ import datetime as dt
 import warnings as wn
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
+plt.rcParams.update({'figure.max_open_warning': 0})
 
 from Utils.CovidDB import CovidDB
 
@@ -28,8 +29,8 @@ class Models:
         self.country = country
         self.covidDB = CovidDB()
         
-    def selectData(self, initDay=None, lastDay=None, forecast=0, train_percent=0.7):
-        self.activecases,self.daysSince = self.getDailyCases(initDay=initDay, lastDay=lastDay)
+    def selectData(self, initDay=None, lastDay=None, forecast=0, train_percent=0.7, plot=False):
+        self.activecases,self.daysSince = self.getDailyCases(initDay=initDay, lastDay=lastDay, plot=plot)
         if self.activecases.empty:
             return pd.Series(dtype='object')
         lastDay = self.daysSince.values[-1]
@@ -45,7 +46,7 @@ class Models:
         self.valid_active = valid_ml.values.reshape(-1,1)
         return pd.Series(True)
 
-    def getDailyCases(self, initDay=None, lastDay=None):
+    def getDailyCases(self, initDay=None, lastDay=None, plot=False):
         country = self.country
         dailyCases = self.covidDB.dailyCases(country)
         if dailyCases.empty:
@@ -76,15 +77,15 @@ class Models:
         self.resPath = self.covidDB.createFolder(new_folder + '\\residual')
         casesFrame.to_csv(self.csv_path + '{country}_daily_cases.csv'.format(country=country))
         #Plotting Daily Cases
-        xData = [dailyCases.index]
-        yData = [dailyCases.values]
-        linestyle = ['-C0']
-        legends = ['Daily cases']
-        labels = ['Date Time','Daily Cases']
-        fileName = '{country}_daily_cases.png'.format(country=country)
-        title = 'Daily case for ' + country
-        self.plot(xData, yData, linestyle, legends, labels, fileName, title)
-
+        if plot:
+            xData = [dailyCases.index]
+            yData = [dailyCases.values]
+            linestyle = ['-C0']
+            legends = ['Daily cases']
+            labels = ['Date Time','Daily Cases']
+            fileName = '{country}_daily_cases.png'.format(country=country)
+            title = 'Daily case for ' + country
+            self.plot(xData, yData, linestyle, legends, labels, fileName, title)
         return dailyCases,daysSince
 
     def __errors(self,validCases,prediction):
@@ -158,8 +159,10 @@ class Models:
         method = method.upper()
         if method == 'AR':
             order = (2, 0, 0)
+            method = 'ARIMA'
         elif method == 'MA':
             order = (0, 0, 2)
+            method = 'ARIMA'
         elif method == 'ARIMA':
             order = (5, 1, 0)
             # order = (1, 1, 1)
@@ -213,7 +216,7 @@ class Models:
         return df
 
     def difference(self, dataset, interval=1):
-        diff = [0]
+        diff = [0]                              #Assume first difference is zero to match length with valid data
         for i in range(interval, len(dataset)):
             value = dataset[i] - dataset[i - interval]
             diff.append(value)
@@ -258,6 +261,35 @@ class Models:
         yhat = model.predict(X, batch_size=batch_size)
         return yhat[0,0]
 
+    def __LSTM(self, model, test_scaled, scaler):
+        predictions = list()
+        for i in range(len(test_scaled)):
+            # make one-step forecast
+            X, y = test_scaled[i, 0:-1], test_scaled[i, -1]
+            yhat = self.forecast_lstm(model, 1, X)
+            # invert scaling
+            yhat = self.invert_scale(scaler, X, yhat)
+            # invert differencing
+            yhat = self.inverse_difference(self.activecases.values, yhat, len(test_scaled)+1-i)
+            if yhat < 0:
+                yhat *= -1
+            # store forecast
+            predictions.append(yhat)
+        errors = self.__errors(self.valid_active,predictions)
+        #Forecasting
+        forecast = list()
+        history = test_scaled[-1,-1:]
+        for i in range(len(self.forecastDays)):
+            X = history
+            yhat = self.forecast_lstm(model, 1, X)
+            yhat = self.invert_scale(scaler, X, yhat)
+            yhat = self.inverse_difference(self.activecases.values, yhat, len(self.forecastDays)-i)
+            forecast.append(yhat)
+            history = np.array([yhat])
+
+        return errors, predictions, forecast
+
+
     def LSTM(self, train_percent=0.7):
         method = 'LSTM'
         train_quantity = int(self.activecases.shape[0]*train_percent)
@@ -270,33 +302,23 @@ class Models:
         lstm_model = self.fit_lstm(train_scaled, 1, 3000, 4)
         train_reshaped = train_scaled[:, 0].reshape(len(train_scaled), 1, 1)
         self.temp = lstm_model.predict(train_reshaped, batch_size=1)
-        predictions = list()
-        for i in range(len(test_scaled)):
-            # make one-step forecast
-            X, y = test_scaled[i, 0:-1], test_scaled[i, -1]
-            yhat = self.forecast_lstm(lstm_model, 1, X)
-            # invert scaling
-            yhat = self.invert_scale(scaler, X, yhat)
-            # invert differencing
-            yhat = self.inverse_difference(self.activecases.values, yhat, len(test_scaled)+1-i)
-            if yhat < 0:
-                yhat *= -1
-            # store forecast
-            predictions.append(yhat)
-            # expected = self.activecases.values[len(train) + i]
-            # expected = int(self.valid_active[i])
-            # print('Month=%d, Predicted=%f, Expected=%f' % (i+1, yhat, expected))
-
-        errors = self.__errors(self.valid_active,predictions)
+        errors,predictions,forecast = self.__LSTM(lstm_model,test_scaled,scaler)
+        
 
         xData = [self.activecases.index, self.valid_index.index]
         yData = [self.activecases.values, predictions]
         vertical = [self.valid_index.index[0]]
         linestyle = ['o-C0','o-r']
         legends = ['Daily Cases', 'Predicted '+ method]
+        if len(forecast) != 0:
+            xData.append(self.forecastDays.index)
+            yData.append(forecast)
+            linestyle.append('*-k')
+            legends.append('{days} of Forecast'.format(days=len(self.forecastDays)))
+            vertical.append(self.forecastDays.index[0])
         labels = ['Date Time','Daily Cases']
         fileName = '{country}_{model}.png'.format(country=self.country, model=method.lower())
         title = "Daily Cases {model} Prediction for {country}".format(country=self.country,model=method)
         self.plot(xData, yData, linestyle, legends, labels, fileName, title, vertical=vertical)
-        return errors,predictions
+        return errors,predictions,forecast
 

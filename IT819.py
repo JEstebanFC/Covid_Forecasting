@@ -74,7 +74,7 @@ if __name__ == "__main__":
             if model in regression_models or 'polynomial' in model:
                 errors,pred = models.regression(model)
             if model.lower() == 'lstm':
-                errors,pred = models.LSTM()
+                errors,pred,forecast = models.LSTM()
             rmse[model] = errors[0]
             mae[model] = errors[1]
             r2[model] = errors[2]
@@ -93,4 +93,5 @@ if __name__ == "__main__":
     print()
     errors = pd.concat([RMSE,MAE,R2],keys=['RMSE','MAE','R2'],axis=0)
     errors.to_csv(resultsPath[0] + 'csv\\errors.csv')
+    # print(errors)
 
