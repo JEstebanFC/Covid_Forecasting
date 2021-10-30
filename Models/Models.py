@@ -274,7 +274,7 @@ class Models:
             X = history
             yhat = self.forecast_lstm(model, 1, X)
             yhat = self.invert_scale(scaler, X, yhat)
-            yhat = self.inverse_difference(self.activecases.values, yhat, len(self.forecastDays)-i)
+            yhat = self.inverse_difference(self.activecases.values, yhat, len(self.forecastDays)+1-i)
             forecast.append(yhat)
             history = np.array([yhat])
 
