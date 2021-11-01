@@ -27,6 +27,7 @@ if __name__ == "__main__":
     parser.add_option('-f', '--first-day', dest='firstDay', default=None)
     parser.add_option('-l', '--last-day', dest='lastDay', default=None)
     parser.add_option('-p', '--prediction', dest='prediction', type=int, default=0)
+    parser.add_option('-r', '--ratio', dest='ratio', type=float, default=0.7)
     options, args = parser.parse_args()
     options.countries = options.countries.split(',')
     opts_models = []
@@ -60,7 +61,7 @@ if __name__ == "__main__":
         mae = {}
         r2 = {}
         models = Models(country=country)
-        t = models.selectData(initDay=options.firstDay, lastDay=options.lastDay, forecast=options.prediction)
+        t = models.selectData(initDay=options.firstDay, lastDay=options.lastDay, forecast=options.prediction, train_percent=options.ratio)
         if t.empty:
             print('Error: No data found for ' + country)
             continue

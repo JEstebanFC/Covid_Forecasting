@@ -30,6 +30,7 @@ class Models:
         self.covidDB = CovidDB()
         
     def selectData(self, initDay=None, lastDay=None, forecast=0, train_percent=0.7, plot=False):
+        self.train_percent = float(train_percent)
         self.activecases,self.daysSince = self.getDailyCases(initDay=initDay, lastDay=lastDay, plot=plot)
         if self.activecases.empty:
             return pd.Series(dtype='object')
@@ -37,7 +38,7 @@ class Models:
         forecast_index = pd.date_range(start=self.daysSince.index[-1], periods=forecast+1, freq='D')[1:]
         self.forecastDays = pd.Series(range(lastDay+1, lastDay+1+forecast), forecast_index)
 
-        train_quantity = int(self.activecases.shape[0]*train_percent)
+        train_quantity = int(self.activecases.shape[0]*self.train_percent)
         train_ml = self.activecases[:train_quantity]
         valid_ml = self.activecases[train_quantity:]
         self.train_index = self.daysSince[:train_quantity]
@@ -283,9 +284,9 @@ class Models:
         return errors, predictions, forecast
 
 
-    def LSTM(self, train_percent=0.7):
+    def LSTM(self):
         method = 'LSTM'
-        train_quantity = int(self.activecases.shape[0]*train_percent)
+        train_quantity = int(self.activecases.shape[0]*self.train_percent)
         diff_values = self.difference(self.activecases, 1)
         supervised = self.timeseries_to_supervised(diff_values, 1)
         supervised_values = supervised.values
