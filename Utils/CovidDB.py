@@ -29,6 +29,12 @@ class CovidDB:
         self.confirmed = pd.read_csv(url_confirmed, index_col=1)
         self.deaths = pd.read_csv(url_deaths, index_col=1)
         self.recovered = pd.read_csv(url_recovered, index_col=1)
+        if 'Korea, South' in self.confirmed.index:
+            self.confirmed.rename(index={'Korea, South':'South Korea'},inplace=True)
+        if 'Korea, South' in self.deaths.index:
+            self.deaths.rename(index={'Korea, South':'South Korea'},inplace=True)
+        if 'Korea, South' in self.recovered.index:
+            self.recovered.rename(index={'Korea, South':'South Korea'},inplace=True)
         self.date_format = '%m/%d/%y'
         self.confirmed = self.confirmed.drop(columns=['Lat', 'Long'])
         
