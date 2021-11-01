@@ -28,6 +28,7 @@ if __name__ == "__main__":
     parser.add_option('-l', '--last-day', dest='lastDay', default=None)
     parser.add_option('-p', '--prediction', dest='prediction', type=int, default=0)
     parser.add_option('-r', '--ratio', dest='ratio', type=float, default=0.7)
+    parser.add_option('--daily-plot', dest='dailyPlot', action='store_true', default=False)
     options, args = parser.parse_args()
     options.countries = options.countries.split(',')
     opts_models = []
@@ -49,6 +50,12 @@ if __name__ == "__main__":
         elif 'polynomial' in model:
             options_models.append(model)
 
+    dataOpts = {}
+    dataOpts['initDay'] = options.firstDay
+    dataOpts['lastDay'] = options.lastDay
+    dataOpts['forecast'] = options.prediction
+    dataOpts['train_percent'] = options.ratio
+    dataOpts['plot'] = options.dailyPlot
     RMSE = pd.DataFrame(columns=options_models, index=options.countries)
     RMSE.index.name = 'Countries'
     MAE = pd.DataFrame(columns=options_models, index=options.countries)
@@ -61,7 +68,7 @@ if __name__ == "__main__":
         mae = {}
         r2 = {}
         models = Models(country=country)
-        t = models.selectData(initDay=options.firstDay, lastDay=options.lastDay, forecast=options.prediction, train_percent=options.ratio)
+        t = models.selectData(**dataOpts)
         if t.empty:
             print('Error: No data found for ' + country)
             continue
