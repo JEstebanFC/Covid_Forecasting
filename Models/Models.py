@@ -120,9 +120,9 @@ class Models:
         # Plotting
         xData = [self.activecases.index,self.activecases.index.append(self.forecastDays.index)]
         yData = [self.activecases.values,pred]
-        vertical = [[self.valid_index.index[0],'Training']]
+        vertical = [[self.valid_index.index[0],'Training   ','  Validation']]
         if not self.forecastDays.empty:
-            vertical.append([self.forecastDays.index[0],'Validation'])
+            vertical.append([self.forecastDays.index[0],'','  Forecast'])
         linestyle = ['-C0','-r']
         legends = ['Daily Cases',"Predicted Daily Cases: {model} Regression".format(model=method)]
         labels = ['Date Time','Daily Cases']
@@ -162,7 +162,7 @@ class Models:
         # Plotting
         xData = [self.activecases.index, self.valid_index.index]
         yData = [self.activecases.values, pred]
-        vertical = [[self.valid_index.index[0],'Training']]
+        vertical = [[self.valid_index.index[0],'Training   ','  Validation']]
         linestyle = ['o-C0','o-r']
         legends = ['Daily Cases', 'Predicted '+ method + str(order).replace(' ','')]
         if len(forecast) != 0:
@@ -170,7 +170,7 @@ class Models:
             yData.append(forecast)
             linestyle.append('*-k')
             legends.append('{days} of Forecast'.format(days=len(self.forecastDays)))
-            vertical.append([self.forecastDays.index[0],'Validation'])
+            vertical.append([self.forecastDays.index[0],'','  Forecast'])
         labels = ['Date Time','Daily Cases']
         fileName = '{country}_{model}.png'.format(country=self.country, model=method + str(order))
         title = "Daily Cases {model} Model Forecasting for {country}".format(country=self.country,model=method)
@@ -191,6 +191,7 @@ class Models:
             for ver in opts['vertical']:
                 plt.axvline(x=ver[0], color='k', linestyle='--')
                 ax.text(ver[0],ax.dataLim.max[-1],ver[1],size=14,horizontalalignment='right',color='green')
+                ax.text(ver[0],ax.dataLim.max[-1],ver[2],size=14,horizontalalignment='left',color='green')
         plt.legend(loc=2)
         plt.savefig(self.plots_path + fileName)
 
@@ -301,7 +302,7 @@ class Models:
 
         xData = [self.activecases.index, self.valid_index.index]
         yData = [self.activecases.values, predictions]
-        vertical = [[self.valid_index.index[0],'Training']]
+        vertical = [[self.valid_index.index[0],'Training   ','  Validation']]
         linestyle = ['o-C0','o-r']
         legends = ['Daily Cases', 'Predicted '+ method]
         if len(forecast) != 0:
@@ -309,7 +310,7 @@ class Models:
             yData.append(forecast)
             linestyle.append('*-k')
             legends.append('{days} of Forecast'.format(days=len(self.forecastDays)))
-            vertical.append([self.forecastDays.index[0],'Validation'])
+            vertical.append([self.forecastDays.index[0],'','  Forecast'])
         labels = ['Date Time','Daily Cases']
         fileName = '{country}_{model}.png'.format(country=self.country, model=method.lower())
         title = "Daily Cases {model} Prediction for {country}".format(country=self.country,model=method)
