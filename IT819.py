@@ -36,7 +36,8 @@ if __name__ == "__main__":
         opts_models.append(om.lower())
     
     options_models = []
-    arima_orders = [(2,0,0), (0,0,2), (5,1,0), (1,1,1)]
+    # arima_orders = [(2,0,0), (0,0,2), (5,1,0), (1,1,1)]
+    arima_orders = [(5,1,0), (1,1,1)]
     regression_models = ['linear','polynomial','lasso']
     if 'arima' in opts_models or 'arimas' in opts_models:
         options_models.extend(arima_orders)
