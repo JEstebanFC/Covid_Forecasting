@@ -28,6 +28,7 @@ class Models:
     def __init__(self, country):
         self.country = country
         self.covidDB = CovidDB()
+        self.extra = '_'
         
     def selectData(self, initDay=None, lastDay=None, forecast=0, train_percent=0.7, plot=False):
         self.train_percent = float(train_percent)
@@ -37,6 +38,8 @@ class Models:
         lastDay = self.daysSince.values[-1]
         forecast_index = pd.date_range(start=self.daysSince.index[-1], periods=forecast+1, freq='D')[1:]
         self.forecastDays = pd.Series(range(lastDay+1, lastDay+1+forecast), forecast_index)
+        if forecast > 0:
+            self.extra += 'F' + str(forecast)
 
         train_quantity = int(self.activecases.shape[0]*self.train_percent)
         train_ml = self.activecases[:train_quantity]
@@ -61,6 +64,7 @@ class Models:
             lastDay = dailyCases.index[-1]
         lastDay = pd.to_datetime(lastDay)
         if initDay != None and 'w' in initDay:
+            self.extra += str(initDay)
             weeks = int(initDay.split('w')[0])
             initDay = lastDay - pd.DateOffset(7*weeks)
         if initDay == None or initDay not in dailyCases:    #Assuming there is information for every day inside the range
@@ -126,7 +130,7 @@ class Models:
         linestyle = ['-C0','-r']
         legends = ['Daily Cases',"Predicted Daily Cases: {model} Regression".format(model=method)]
         labels = ['Date Time','Daily Cases']
-        fileName = '{country}_regression_{model}.png'.format(country=self.country, model=method.lower())
+        fileName = '{country}_regression_{model}{extra}.png'.format(country=self.country, model=method.lower(),extra=self.extra)
         title = "Daily Cases {model} Regression Prediction for {country}".format(country=self.country,model=method)
         self.plot(xData, yData, linestyle, legends, labels, fileName, title, vertical=vertical)
         return errors,pred
@@ -149,6 +153,8 @@ class Models:
             prediction = model_fit.forecast()
             forecast.append(prediction[0])
             history.append(np.array([prediction[0]]))
+        # model = ARIMA(history, order=order)
+        # model_fit = model.fit()
         # if not self.forecastDays.empty:
         #     forecast = model_fit.forecast(len(self.forecastDays))
         forecast = pd.Series(forecast, self.forecastDays.index)
@@ -158,6 +164,7 @@ class Models:
 
     def ARIMA(self, order):
         method = 'ARIMA'
+        order = (5,1,0)
         errors,pred,forecast,residuals = self.__ARIMA(order)
         # Plotting
         xData = [self.activecases.index, self.valid_index.index]
@@ -172,10 +179,11 @@ class Models:
             legends.append('{days} of Forecast'.format(days=len(self.forecastDays)))
             vertical.append([self.forecastDays.index[0],'','  Forecast'])
         labels = ['Date Time','Daily Cases']
-        fileName = '{country}_{model}.png'.format(country=self.country, model=method + str(order))
+        fileName = '{country}_{model}{extra}.png'.format(country=self.country, model=method + str(order),extra=self.extra)
         title = "Daily Cases {model} Model Forecasting for {country}".format(country=self.country,model=method)
         self.plot(xData, yData, linestyle, legends, labels, fileName, title, vertical=vertical)
         self.plotResidualsARIMA(residuals, method)
+        forecast.to_csv(self.csv_path + '{country}_{model}_forecast{extra}.csv'.format(country=self.country,model=method,extra=self.extra))
         return errors,pred,forecast
 
     def plot(self, xData, yData, lineStyle, legends, labels, fileName, title, **opts):
@@ -279,9 +287,11 @@ class Models:
             yhat = self.forecast_lstm(model, 1, X)
             yhat = self.invert_scale(scaler, X, yhat)
             yhat = self.inverse_difference(self.activecases.values, yhat, len(self.forecastDays)+1-i)
+            if yhat < 0:
+                yhat *= -1
             forecast.append(yhat)
             history = np.array([yhat])
-
+        forecast = pd.Series(forecast, self.forecastDays.index)
         return errors, predictions, forecast
 
 
@@ -312,8 +322,10 @@ class Models:
             legends.append('{days} of Forecast'.format(days=len(self.forecastDays)))
             vertical.append([self.forecastDays.index[0],'','  Forecast'])
         labels = ['Date Time','Daily Cases']
-        fileName = '{country}_{model}.png'.format(country=self.country, model=method.lower())
+        fileName = '{country}_{model}{extra}.png'.format(country=self.country, model=method.lower(),extra=self.extra)
         title = "Daily Cases {model} Prediction for {country}".format(country=self.country,model=method)
         self.plot(xData, yData, linestyle, legends, labels, fileName, title, vertical=vertical)
+        # print(forecast.to_string())
+        forecast.to_csv(self.csv_path + '{country}_{model}_forecast{extra}.csv'.format(country=self.country,model=method,extra=self.extra))
         return errors,predictions,forecast
 
