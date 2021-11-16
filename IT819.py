@@ -37,8 +37,11 @@ if __name__ == "__main__":
     
     options_models = []
     # arima_orders = [(2,0,0), (0,0,2), (5,1,0), (1,1,1)]
-    arima_orders = [(5,1,0), (1,1,1)]
-    regression_models = ['linear','polynomial','lasso']
+    # arima_orders = [(5,1,0), (1,1,1)]
+    # arima_orders = [(5,1,0), (5,1,1),(5,2,1), (5,2,2)]
+    arima_orders = ['ARIMA']
+    # regression_models = ['linear','polynomial','lasso']
+    regression_models = ['linear','lasso']
     if 'arima' in opts_models or 'arimas' in opts_models:
         options_models.extend(arima_orders)
     if 'regression' in opts_models:
@@ -101,6 +104,6 @@ if __name__ == "__main__":
         print('\t',p)
     print()
     errors = pd.concat([RMSE,MAE,R2],keys=['RMSE','MAE','R2'],axis=0)
-    errors.to_csv(resultsPath[0] + 'csv\\errors.csv')
+    errors.to_csv(resultsPath[0] + 'csv\\Errors.csv')
     # print(errors)
 
