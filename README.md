@@ -39,7 +39,7 @@
 ### FBProphet
 - pip install Cython
 - python -m pip install pystan==2.17.1.0
-- python -m pip install fbprophet==0.6   
+- python -m pip install fbprophet==0.6
 - python -m pip install --upgrade fbprophet
 - pip install --upgrade plotly
 
