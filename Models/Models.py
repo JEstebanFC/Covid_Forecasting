@@ -10,7 +10,7 @@ plt.rcParams.update({'figure.max_open_warning': 0})
 
 from Utils.CovidDB import CovidDB
 
-from Models import DATA_PATH, RESULTS_PATH
+from Models import RESULTS_PATH
 
 from statsmodels.tsa.arima.model import ARIMA
 
@@ -257,7 +257,7 @@ class Models:
         return inverted[0, -1]
 
     def inverse_difference(self, history, yhat, interval=1):
-	    return yhat + history[-interval]
+        return yhat + history[-interval]
 
     def forecast_lstm(self, model, batch_size, X):
         X = X.reshape(1, 1, len(X))

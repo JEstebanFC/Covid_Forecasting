@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from Models import DATA_PATH, RESULTS_PATH
+from Models import RESULTS_PATH
 
 from datetime import datetime, timedelta
 
@@ -126,7 +126,7 @@ class CovidDB:
             plt.savefig(results_path + '{country}_active_cases.png'.format(country=country))
 
     def createFolder(self, date):
-        results_path = '%sIT819\\%s\\' %(RESULTS_PATH, date)
+        results_path = '%s%s\\' %(RESULTS_PATH, date)
         try:
             os.makedirs(results_path)
         except OSError:
