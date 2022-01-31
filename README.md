@@ -49,6 +49,7 @@
 - pip install notebook
 - pip install voila
 - pip install ipython
+- pip install --user -r requirement.txt
 - Install Microsoft Visual C++ 14.0 for pystan:
     https://stackoverflow.com/questions/40018405/cannot-open-include-file-io-h-no-such-file-or-directory
     https://answers.microsoft.com/en-us/windows/forum/all/microsoft-visual-c-140/6f0726e2-6c32-4719-9fe5-aa68b5ad8e6d
