@@ -36,20 +36,13 @@ if __name__ == "__main__":
         opts_models.append(om.lower())
     
     options_models = []
-    # arima_orders = [(2,0,0), (0,0,2), (5,1,0), (1,1,1)]
-    # arima_orders = [(5,1,0), (1,1,1)]
-    # arima_orders = [(5,1,0), (5,1,1),(5,2,1), (5,2,2)]
     arima_orders = ['ARIMA']
-    # regression_models = ['linear','polynomial','lasso']
-    regression_models = ['linear','lasso']
     if 'arima' in opts_models or 'arimas' in opts_models:
         options_models.extend(arima_orders)
-    if 'regression' in opts_models:
-        options_models.extend(regression_models)
     for model in opts_models:
         if model in options_models:
             continue
-        if model in regression_models or model in arima_orders or model == 'lstm':
+        if model in arima_orders or model == 'lstm':
             options_models.append(model)
         elif 'polynomial' in model:
             options_models.append(model)
@@ -83,8 +76,6 @@ if __name__ == "__main__":
             print('Starting with {country} using {model} model'.format(country=country,model=model))
             if model in arima_orders:
                 errors,pred,forecast = models.ARIMA(model)
-            if model in regression_models or 'polynomial' in model:
-                errors,pred = models.regression(model)
             if model == 'lstm':
                 errors,pred,forecast = models.LSTM()
             rmse[model] = errors[0]
