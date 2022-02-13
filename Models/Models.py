@@ -24,6 +24,8 @@ from sklearn.preprocessing import MinMaxScaler, PolynomialFeatures
 from keras.models import Sequential
 from keras.layers import Dense, LSTM
 
+from fbprophet import Prophet
+
 class Models:
     def __init__(self, country):
         self.country = country
@@ -32,7 +34,7 @@ class Models:
         
     def selectData(self, initDay=None, lastDay=None, forecast=0, train_percent=0.7, plot=False):
         self.train_percent = float(train_percent)
-        self.activecases,self.daysSince = self.getDailyCases(initDay=initDay, lastDay=lastDay, plot=plot)
+        self.activecases, self.daysSince = self.getDailyCases(initDay=initDay, lastDay=lastDay, plot=plot)
         if self.activecases.empty:
             return pd.Series(dtype='object')
         lastDay = self.daysSince.values[-1]
@@ -42,12 +44,12 @@ class Models:
             self.extra += 'F' + str(forecast)
 
         train_quantity = int(self.activecases.shape[0]*self.train_percent)
-        train_ml = self.activecases[:train_quantity]
-        valid_ml = self.activecases[train_quantity:]
+        self.train_ml = self.activecases[:train_quantity]
+        self.valid_ml = self.activecases[train_quantity:]
         self.train_index = self.daysSince[:train_quantity]
         self.valid_index = self.daysSince[train_quantity:]
-        self.train_active = train_ml.values.reshape(-1,1)
-        self.valid_active = valid_ml.values.reshape(-1,1)
+        self.train_active = self.train_ml.values.reshape(-1,1)
+        self.valid_active = self.valid_ml.values.reshape(-1,1)
         return pd.Series(True)
 
     def getDailyCases(self, initDay=None, lastDay=None, plot=False):
@@ -99,6 +101,44 @@ class Models:
         R2 = r2_score(validCases,prediction)
         return [RMSE,MAE,R2]
     
+    #REGRESSION
+    def __regression(self, method, poly=3):
+        X_values = self.train_index.values.reshape(-1,1)
+        if method.lower() == 'linear':
+            regression = LinearRegression(normalize=True)
+        elif method.lower() == 'lasso':
+            lasso_reg = Lasso(alpha=.8,normalize=True, max_iter=1e5)
+            regression = make_pipeline(PolynomialFeatures(3), lasso_reg)
+        elif 'polynomial' in method.lower():
+            t = method.lower().split('polynomial')[-1]
+            if t:
+                poly = int(t)
+            regression = make_pipeline(PolynomialFeatures(degree=poly), LinearRegression())
+            # regression = make_pipeline(PolynomialFeatures(degree=poly), Ridge())
+        regression.fit(X_values,self.train_active)
+        prediction = regression.predict(self.valid_index.values.reshape(-1,1))
+        errors = self.__errors(self.valid_active,prediction)
+        pred = regression.predict(self.daysSince.append(self.forecastDays).values.reshape(-1,1))
+        return errors,pred
+
+    def regression(self, method):
+        method = method.capitalize()
+        errors,pred = self.__regression(method)
+        # Plotting
+        xData = [self.activecases.index,self.activecases.index.append(self.forecastDays.index)]
+        yData = [self.activecases.values,pred]
+        vertical = [[self.valid_index.index[0],'Training   ','  Validation']]
+        if not self.forecastDays.empty:
+            vertical.append([self.forecastDays.index[0],'','  Forecast'])
+        linestyle = ['-C0','-r']
+        legends = ['Daily Cases',"Predicted Daily Cases: {model} Regression".format(model=method)]
+        labels = ['Date Time','Daily Cases']
+        fileName = '{country}_regression_{model}{extra}.png'.format(country=self.country, model=method.lower(),extra=self.extra)
+        title = "Daily Cases {model} Regression Prediction for {country}".format(country=self.country,model=method)
+        self.plot(xData, yData, linestyle, legends, labels, fileName, title, vertical=vertical)
+        return errors,pred
+    
+    #ARIMA
     def __ARIMA(self, order):
         preds = []
         history = [x for x in self.train_active]
@@ -173,6 +213,89 @@ class Models:
         residuals.plot(kind='kde')
         plt.savefig(self.resPath + '{country}_{model}_residual_error_kde.png'.format(country=self.country, model=model))
 
+
+    #Prophet
+    def __prophet2(self):
+        model = Prophet()
+        training = pd.DataFrame({'ds':self.train_ml.index, 'y':self.train_ml.values})
+        valid = pd.DataFrame({'ds':self.valid_ml.index})
+        forecastDays = pd.DataFrame({'ds':self.forecastDays.index})
+        model.fit(training)
+        preds = model.predict(valid)
+        errors = self.__errors(self.valid_active,preds[['yhat']].values.reshape(-1,1))
+        return errors,preds
+
+    def __prophet(self):
+        preds = pd.DataFrame({'ds':[],'y':[]})
+        history = pd.DataFrame({'ds': self.train_ml.index, 'y': self.train_ml.values})
+        valid = pd.DataFrame({'ds':self.valid_ml.index, 'y':self.valid_ml.values})
+        for i in valid.index:
+            val = valid.loc[i:i]
+            model = Prophet()
+            model.fit(history)
+            prediction = model.predict(val)
+            preds = preds.append({'ds':prediction['ds'][0], 'y':prediction['yhat'][0]}, ignore_index=True)
+            history = history.append({'ds': val['ds'][i], 'y': val['y'][i]}, ignore_index=True)
+        errors = self.__errors(self.valid_active,preds['y'].values.reshape(-1,1))
+        forecast = pd.DataFrame({'ds':self.forecastDays.index, 'y':None})
+        for i in forecast.index:
+            fore = forecast.loc[i:i]
+            model = Prophet()
+            model.fit(history)
+            prediction = model.predict(fore)
+            forecast.y.loc[i:i] = prediction['yhat'][0]
+            history = history.append({'ds': prediction['ds'][0], 'y': prediction['yhat'][0]}, ignore_index=True)
+        return errors,preds,forecast
+
+    def prophet(self):
+        errors,pred,forecast = self.__prophet()
+        # Plotting
+        method = 'Prophet'
+        xData = [self.activecases.index, self.valid_index.index]
+        yData = [self.activecases.values, pred]
+        vertical = [[self.valid_index.index[0],'Training   ','  Validation']]
+        linestyle = ['o-C0','o-r']
+        legends = ['Daily Cases', 'Predicted '+ method]
+        if len(forecast) != 0:
+            xData.append(self.forecastDays.index)
+            yData.append(forecast)
+            linestyle.append('*-k')
+            legends.append('{days} of Forecast'.format(days=len(self.forecastDays)))
+            vertical.append([self.forecastDays.index[0],'','  Forecast'])
+        labels = ['Date Time','Daily Cases']
+        fileName = '{country}_{model}{extra}.png'.format(country=self.country, model=method,extra=self.extra)
+        title = "Daily Cases {model} Model Forecasting for {country}".format(country=self.country,model=method)
+        self.plot(xData, yData, linestyle, legends, labels, fileName, title, vertical=vertical)
+        forecast.to_csv(self.csv_path + '{country}_{model}_forecast{extra}.csv'.format(country=self.country,model=method,extra=self.extra))
+        
+        return errors,pred,forecast
+
+
+    #MLP
+    def split_sequence(self,sequence, n_steps):
+        X, y = list(), list()
+        for i in range(len(sequence)):
+            # find the end of this pattern
+            end_ix = i + n_steps
+            # check if we are beyond the sequence
+            if end_ix > len(sequence)-1:
+                break
+            # gather input and output parts of the pattern
+            seq_x, seq_y = sequence[i:end_ix], sequence[end_ix]
+            X.append(seq_x)
+            y.append(seq_y)
+        return np.array(X), np.array(y)
+    
+    def __MLP(self,X,y,n_steps):
+        model = Sequential()
+        model.add(Dense(100, activation='relu', input_dim=n_steps))
+        model.add(Dense(1))
+        model.compile(optimizer='adam', loss='mse')
+        model.fit(X, y, epochs=2000, verbose=0)
+
+    def MLP(self):
+        pass
+
     #LSTM
     def timeseries_to_supervised(self, data, lag=1):
         df = pd.DataFrame(data)
@@ -180,6 +303,8 @@ class Models:
         columns.append(df)
         df = pd.concat(columns, axis=1)
         df.fillna(0, inplace=True)
+        # df.fillna(0, inplace=True)
+        # df = df.drop(0)
         return df
 
     def difference(self, dataset, interval=1):
@@ -201,6 +326,16 @@ class Models:
         test_scaled = scaler.transform(test)
         return scaler, train_scaled, test_scaled
 
+    def invert_scale(self, scaler, X, value):
+        new_row = [x for x in X] + [value]
+        array = np.array(new_row)
+        array = array.reshape(1, len(array))
+        inverted = scaler.inverse_transform(array)
+        return inverted[0, -1]
+
+    def inverse_difference(self, history, yhat, interval=1):
+        return yhat + history[-interval]
+
     def fit_lstm(self, train, batch_size, nb_epoch, neurons):
         X, y = train[:, 0:-1], train[:, -1]
         X = X.reshape(X.shape[0], 1, X.shape[1])
@@ -212,16 +347,6 @@ class Models:
             model.fit(X, y, epochs=1, batch_size=batch_size, verbose=0, shuffle=False)
             model.reset_states()
         return model
-
-    def invert_scale(self, scaler, X, value):
-        new_row = [x for x in X] + [value]
-        array = np.array(new_row)
-        array = array.reshape(1, len(array))
-        inverted = scaler.inverse_transform(array)
-        return inverted[0, -1]
-
-    def inverse_difference(self, history, yhat, interval=1):
-        return yhat + history[-interval]
 
     def forecast_lstm(self, model, batch_size, X):
         X = X.reshape(1, 1, len(X))
