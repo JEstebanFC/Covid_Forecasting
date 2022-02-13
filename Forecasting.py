@@ -42,7 +42,7 @@ if __name__ == "__main__":
     for model in opts_models:
         if model in options_models:
             continue
-        if model in arima_orders or model == 'lstm':
+        if model in arima_orders + ['lstm', 'prophet']:
             options_models.append(model)
         elif 'polynomial' in model:
             options_models.append(model)
@@ -78,6 +78,8 @@ if __name__ == "__main__":
                 errors,pred,forecast = models.ARIMA(model)
             if model == 'lstm':
                 errors,pred,forecast = models.LSTM()
+            if model == 'prophet':
+                errors,pred,forecast = models.prophet()
             rmse[model] = errors[0]
             mae[model] = errors[1]
             r2[model] = errors[2]
