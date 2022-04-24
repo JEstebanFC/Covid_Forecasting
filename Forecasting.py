@@ -84,9 +84,10 @@ if __name__ == "__main__":
             for e in metrics:
                 errorMetrics[e].loc[country][model] = errors[e]
 
-    for e in metrics:
-        print('\n' + color.BOLD + e + color.END)
-        print(errorMetrics[e].to_string())
+    if options_models != []:
+        for e in metrics:
+            print('\n' + color.BOLD + e + color.END)
+            print(errorMetrics[e].to_string())
 
     print(color.BOLD + '\nResults saved in: ' + color.END)
     for p in resultsPath:
