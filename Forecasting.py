@@ -27,7 +27,7 @@ if __name__ == "__main__":
     parser.add_option('-f', '--first-day', dest='firstDay', default=None)
     parser.add_option('-l', '--last-day', dest='lastDay', default=None)
     parser.add_option('-p', '--prediction', dest='prediction', type=int, default=0)
-    parser.add_option('-r', '--ratio', dest='ratio', type=float, default=0.7)
+    parser.add_option('-r', '--ratio', dest='ratio', type=float, default=0.75)
     parser.add_option('--daily-plot', dest='dailyPlot', action='store_true', default=False)
     options, args = parser.parse_args()
     options.countries = options.countries.split(',')
@@ -53,17 +53,18 @@ if __name__ == "__main__":
     dataOpts['forecast'] = options.prediction
     dataOpts['train_percent'] = options.ratio
     dataOpts['plot'] = options.dailyPlot
-    RMSE = pd.DataFrame(columns=options_models, index=options.countries)
-    RMSE.index.name = 'Countries'
-    MAE = pd.DataFrame(columns=options_models, index=options.countries)
-    MAE.index.name = 'Countries'
-    R2 = pd.DataFrame(columns=options_models, index=options.countries)
-    R2.index.name = 'Countries'
+    
     resultsPath = []
+
+    metrics = ['R2', 'MAE', 'MAPE', 'RMSE', 'NRMSE']
+    errorMetrics = {}
+    for e in metrics:
+        errorMetrics[e] = pd.DataFrame(columns=options_models, index=options.countries)
+        errorMetrics[e].index.name = 'Countries'
+        for country in options.countries:
+            errorMetrics[e].loc[country] = {}
+    
     for country in options.countries:
-        rmse = {}
-        mae = {}
-        r2 = {}
         models = Models(country=country)
         t = models.selectData(**dataOpts)
         if t.empty:
@@ -80,23 +81,20 @@ if __name__ == "__main__":
                 errors,pred,forecast = models.LSTM()
             if model == 'prophet':
                 errors,pred,forecast = models.prophet()
-            rmse[model] = errors[0]
-            mae[model] = errors[1]
-            r2[model] = errors[2]
-        RMSE.loc[country] = rmse
-        MAE.loc[country] = mae
-        R2.loc[country] = r2
-    print(color.BOLD + '\nRMSE' + color.END)
-    print(RMSE.to_string())
-    print(color.BOLD + '\nMAE' + color.END)
-    print(MAE.to_string())
-    print(color.BOLD + '\nR2' + color.END)
-    print(R2.to_string())
+            for e in metrics:
+                errorMetrics[e].loc[country][model] = errors[e]
+
+    for e in metrics:
+        print('\n' + color.BOLD + e + color.END)
+        print(errorMetrics[e].to_string())
+
     print(color.BOLD + '\nResults saved in: ' + color.END)
     for p in resultsPath:
         print('\t',p)
     print()
-    errors = pd.concat([RMSE,MAE,R2],keys=['RMSE','MAE','R2'],axis=0)
+
+    errors = pd.concat(list(errorMetrics.values()),keys=list(errorMetrics.keys()),axis=0)
     errors.to_csv(resultsPath[0] + 'csv\\Errors.csv')
-    # print(errors)
+
+
 
