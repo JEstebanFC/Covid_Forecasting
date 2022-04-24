@@ -1,4 +1,5 @@
 import os
+import logging
 import numpy as np
 from numpy.testing._private.utils import print_assert_equal
 import pandas as pd
@@ -18,6 +19,7 @@ from sklearn.metrics import r2_score
 from sklearn.pipeline import make_pipeline
 from sklearn.metrics import mean_squared_error as mse
 from sklearn.metrics import mean_absolute_error as mae
+from sklearn.metrics import mean_absolute_percentage_error as mape
 from sklearn.linear_model import Ridge, Lasso, LinearRegression
 from sklearn.preprocessing import MinMaxScaler, PolynomialFeatures
 
@@ -61,7 +63,8 @@ class Models:
             dailyCases = dailyCases.loc[country].loc['']
         except:
             dailyCases = dailyCases.loc[country].sum()
-        
+        dailyCases = self.covidDB.normalize(dailyCases)
+
         if not lastDay or lastDay not in dailyCases:        #Assuming there is information for every day inside the range
             lastDay = dailyCases.index[-1]
         lastDay = pd.to_datetime(lastDay)
@@ -96,10 +99,13 @@ class Models:
         return dailyCases,daysSince
 
     def __errors(self,validCases,prediction):
-        RMSE = np.sqrt(mse(validCases,prediction))
-        MAE = mae(validCases,prediction)
-        R2 = r2_score(validCases,prediction)
-        return [RMSE,MAE,R2]
+        errors = {}
+        errors['R2'] = r2_score(validCases,prediction)
+        errors['MAE'] = mae(validCases,prediction)
+        errors['MAPE'] = mape(validCases,prediction)
+        errors['RMSE'] = np.sqrt(mse(validCases,prediction))
+        errors['NRMSE'] = np.sqrt(mse(validCases,prediction)/mse(validCases,[np.array([0])]*len(validCases)))
+        return errors
     
     #REGRESSION
     def __regression(self, method, poly=3):
@@ -168,7 +174,10 @@ class Models:
 
     def ARIMA(self, order):
         method = 'ARIMA'
-        order = (5,1,0)
+        # order = (4,1,1)
+        # order = (5,1,0)
+        # order = (2,1,1)
+        order = (1,1,1)
         errors,pred,forecast,residuals = self.__ARIMA(order)
         # Plotting
         xData = [self.activecases.index, self.valid_index.index]
@@ -180,7 +189,7 @@ class Models:
             xData.append(self.forecastDays.index)
             yData.append(forecast)
             linestyle.append('*-k')
-            legends.append('{days} of Forecast'.format(days=len(self.forecastDays)))
+            legends.append('{days} days of Forecast'.format(days=len(self.forecastDays)))
             vertical.append([self.forecastDays.index[0],'','  Forecast'])
         labels = ['Date Time','Daily Cases']
         fileName = '{country}_{model}{extra}.png'.format(country=self.country, model=method + str(order),extra=self.extra)
@@ -216,35 +225,46 @@ class Models:
 
     #Prophet
     def __prophet2(self):
-        model = Prophet()
-        training = pd.DataFrame({'ds':self.train_ml.index, 'y':self.train_ml.values})
-        valid = pd.DataFrame({'ds':self.valid_ml.index})
-        forecastDays = pd.DataFrame({'ds':self.forecastDays.index})
-        model.fit(training)
-        preds = model.predict(valid)
-        errors = self.__errors(self.valid_active,preds[['yhat']].values.reshape(-1,1))
-        return errors,preds
+        # Alternative algorithm, not working well
+        history = pd.DataFrame({'ds':self.train_ml.index, 'y':self.train_ml.values})
+        foreIndex = pd.to_datetime(self.valid_ml.index.to_list() + self.forecastDays.index.to_list())
+        forecasting = pd.DataFrame({'ds':foreIndex})
+        with suppress_stdout_stderr():
+            model = Prophet()
+            model.fit(history)
+            prediction = model.predict(forecasting)
+        prediction.set_index('ds',inplace=True)
+        preds = prediction.yhat.loc[self.valid_ml.index[0]:self.valid_ml.index[-1]]
+        forecast = prediction.yhat.loc[self.forecastDays.index[0]:self.forecastDays.index[-1]]
+        errors = self.__errors(self.valid_active,preds.values.reshape(-1,1))
+        return errors,preds,forecast
 
     def __prophet(self):
         preds = pd.DataFrame({'ds':[],'y':[]})
         history = pd.DataFrame({'ds': self.train_ml.index, 'y': self.train_ml.values})
         valid = pd.DataFrame({'ds':self.valid_ml.index, 'y':self.valid_ml.values})
+        logging.getLogger('fbprophet').setLevel(logging.WARNING)
         for i in valid.index:
             val = valid.loc[i:i]
-            model = Prophet()
-            model.fit(history)
-            prediction = model.predict(val)
+            with suppress_stdout_stderr():
+                model = Prophet()
+                model.fit(history)
+                prediction = model.predict(val)
             preds = preds.append({'ds':prediction['ds'][0], 'y':prediction['yhat'][0]}, ignore_index=True)
             history = history.append({'ds': val['ds'][i], 'y': val['y'][i]}, ignore_index=True)
         errors = self.__errors(self.valid_active,preds['y'].values.reshape(-1,1))
         forecast = pd.DataFrame({'ds':self.forecastDays.index, 'y':None})
         for i in forecast.index:
+            print(i)
             fore = forecast.loc[i:i]
-            model = Prophet()
-            model.fit(history)
-            prediction = model.predict(fore)
+            with suppress_stdout_stderr():
+                model = Prophet()
+                model.fit(history)
+                prediction = model.predict(fore)
             forecast.y.loc[i:i] = prediction['yhat'][0]
             history = history.append({'ds': prediction['ds'][0], 'y': prediction['yhat'][0]}, ignore_index=True)
+        preds.set_index('ds',inplace=True)
+        forecast.set_index('ds',inplace=True)
         return errors,preds,forecast
 
     def prophet(self):
@@ -260,7 +280,7 @@ class Models:
             xData.append(self.forecastDays.index)
             yData.append(forecast)
             linestyle.append('*-k')
-            legends.append('{days} of Forecast'.format(days=len(self.forecastDays)))
+            legends.append('{days} days of Forecast'.format(days=len(self.forecastDays)))
             vertical.append([self.forecastDays.index[0],'','  Forecast'])
         labels = ['Date Time','Daily Cases']
         fileName = '{country}_{model}{extra}.png'.format(country=self.country, model=method,extra=self.extra)
@@ -407,7 +427,7 @@ class Models:
             xData.append(self.forecastDays.index)
             yData.append(forecast)
             linestyle.append('*-k')
-            legends.append('{days} of Forecast'.format(days=len(self.forecastDays)))
+            legends.append('{days} days of Forecast'.format(days=len(self.forecastDays)))
             vertical.append([self.forecastDays.index[0],'','  Forecast'])
         labels = ['Date Time','Daily Cases']
         fileName = '{country}_{model}{extra}.png'.format(country=self.country, model=method.lower(),extra=self.extra)
@@ -417,3 +437,23 @@ class Models:
         forecast.to_csv(self.csv_path + '{country}_{model}_forecast{extra}.csv'.format(country=self.country,model=method,extra=self.extra))
         return errors,predictions,forecast
 
+#SuppresComments
+class suppress_stdout_stderr(object):
+    def __init__(self):
+        # Open a pair of null files
+        self.null_fds = [os.open(os.devnull, os.O_RDWR) for x in range(2)]
+        # Save the actual stdout (1) and stderr (2) file descriptors.
+        self.save_fds = [os.dup(1), os.dup(2)]
+
+    def __enter__(self):
+        # Assign the null pointers to stdout and stderr.
+        os.dup2(self.null_fds[0], 1)
+        os.dup2(self.null_fds[1], 2)
+
+    def __exit__(self, *_):
+        # Re-assign the real stdout/stderr back to (1) and (2)
+        os.dup2(self.save_fds[0], 1)
+        os.dup2(self.save_fds[1], 2)
+        # Close the null files
+        for fd in self.null_fds + self.save_fds:
+            os.close(fd)
