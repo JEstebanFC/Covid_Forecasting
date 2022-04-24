@@ -1,4 +1,5 @@
 import os
+import math
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -98,9 +99,17 @@ class CovidDB:
         dailyCases = ac.diff(axis=1)
         dailyCases.columns = pd.to_datetime(dailyCases.columns)
         dailyCases.fillna(0, inplace=True)
+        # dailyCases = self.normalize(dailyCases)
         return dailyCases
         #data = dailyCases.loc['New Zealand'].loc['']
         #data.plot().get_figure().savefig(results_path + 'test1.png')
+
+    def normalize(self, data):
+        for i in range(len(data)):
+            if data.iloc[i] == 0:
+                data.iloc[i] = math.floor(data.iloc[i+1]/2)
+                data.iloc[i+1] = math.ceil(data.iloc[i+1]/2)
+        return data
 
     def plotDailyCases(self, countries):
         if type(countries) != list:
