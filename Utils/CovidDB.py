@@ -106,7 +106,7 @@ class CovidDB:
 
     def normalize(self, data):
         for i in range(len(data)):
-            if data.iloc[i] == 0:
+            if data.iloc[i] <= 0:
                 data.iloc[i] = math.floor(data.iloc[i+1]/2)
                 data.iloc[i+1] = math.ceil(data.iloc[i+1]/2)
         return data
