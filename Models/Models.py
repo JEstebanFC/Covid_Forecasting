@@ -13,6 +13,7 @@ from Utils.CovidDB import CovidDB
 
 from Models import RESULTS_PATH
 
+from pmdarima import auto_arima
 from statsmodels.tsa.arima.model import ARIMA
 
 from sklearn.metrics import r2_score
@@ -34,8 +35,13 @@ class Models:
         self.covidDB = CovidDB()
         self.extra = '_'
         
-    def selectData(self, initDay=None, lastDay=None, forecast=0, train_percent=0.7, plot=False):
-        self.train_percent = float(train_percent)
+    def selectData(self, initDay=None, lastDay=None, forecast=0, train_percent='0.75', plot=False):
+        if 'w' in train_percent:
+            train_weeks = int(train_percent.split('w')[0])
+            train_percent = float(1.0)
+        else:
+            train_weeks = int(0)
+            train_percent = float(train_percent)
         self.activecases, self.daysSince = self.getDailyCases(initDay=initDay, lastDay=lastDay, plot=plot)
         if self.activecases.empty:
             return pd.Series(dtype='object')
@@ -45,11 +51,12 @@ class Models:
         if forecast > 0:
             self.extra += 'F' + str(forecast)
 
-        train_quantity = int(self.activecases.shape[0]*self.train_percent)
-        self.train_ml = self.activecases[:train_quantity]
-        self.valid_ml = self.activecases[train_quantity:]
-        self.train_index = self.daysSince[:train_quantity]
-        self.valid_index = self.daysSince[train_quantity:]
+        L = self.activecases.shape[0]
+        self.train_quantity = int(L*train_percent - train_weeks*7)
+        self.train_ml = self.activecases[:self.train_quantity]
+        self.valid_ml = self.activecases[self.train_quantity:]
+        self.train_index = self.daysSince[:self.train_quantity]
+        self.valid_index = self.daysSince[self.train_quantity:]
         self.train_active = self.train_ml.values.reshape(-1,1)
         self.valid_active = self.valid_ml.values.reshape(-1,1)
         return pd.Series(True)
@@ -105,8 +112,19 @@ class Models:
         errors['MAPE'] = mape(validCases,prediction)
         errors['RMSE'] = np.sqrt(mse(validCases,prediction))
         errors['NRMSE'] = np.sqrt(mse(validCases,prediction)/mse(validCases,[np.array([0])]*len(validCases)))
+        errors['WSM'] =  self.WSM(errors)
         return errors
     
+    def WSM(self,errors):
+        weights = {}
+        weights['R2'] = -0.5
+        weights['MAPE'] = 0.25
+        weights['NRMSE'] = 0.25
+        wsm = 0.5
+        for e in weights:
+            wsm += errors[e] * weights[e]
+        return wsm
+
     #REGRESSION
     def __regression(self, method, poly=3):
         X_values = self.train_index.values.reshape(-1,1)
@@ -177,7 +195,9 @@ class Models:
         # order = (4,1,1)
         # order = (5,1,0)
         # order = (2,1,1)
-        order = (1,1,1)
+        # order = (1,1,1)
+        model = auto_arima(self.activecases, test='adf', suppress_warnings=True)
+        order = model.order
         errors,pred,forecast,residuals = self.__ARIMA(order)
         # Plotting
         xData = [self.activecases.index, self.valid_index.index]
@@ -195,7 +215,8 @@ class Models:
         fileName = '{country}_{model}{extra}.png'.format(country=self.country, model=method + str(order),extra=self.extra)
         title = "Daily Cases {model} Model Forecasting for {country}".format(country=self.country,model=method)
         self.plot(xData, yData, linestyle, legends, labels, fileName, title, vertical=vertical)
-        self.plotResidualsARIMA(residuals, method)
+        self.plotResidualsARIMA(residuals, method + str(order).replace(' ',''))
+        pred.to_csv(self.csv_path + '{country}_{model}_validation{extra}.csv'.format(country=self.country,model=method,extra=self.extra))
         forecast.to_csv(self.csv_path + '{country}_{model}_forecast{extra}.csv'.format(country=self.country,model=method,extra=self.extra))
         return errors,pred,forecast
 
@@ -405,12 +426,11 @@ class Models:
 
     def LSTM(self):
         method = 'LSTM'
-        train_quantity = int(self.activecases.shape[0]*self.train_percent)
         diff_values = self.difference(self.activecases, 1)
         supervised = self.timeseries_to_supervised(diff_values, 1)
         supervised_values = supervised.values
-        train = supervised_values[:train_quantity]
-        test = supervised_values[train_quantity:]
+        train = supervised_values[:self.train_quantity]
+        test = supervised_values[self.train_quantity:]
         scaler, train_scaled, test_scaled = self.scale(train, test)
         lstm_model = self.fit_lstm(train_scaled, 1, 3000, 4)
         train_reshaped = train_scaled[:, 0].reshape(len(train_scaled), 1, 1)
