@@ -2,11 +2,12 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from datetime import datetime
 from optparse import OptionParser
-from Models import RESULTS_PATH
 
-from Models.Models import Models
 from numpy import argsort
+from Models import RESULTS_PATH
+from Models.Models import Models
 
 class color:
    PURPLE = '\033[95m'
@@ -74,11 +75,17 @@ if __name__ == "__main__":
         for model in options_models:
             print('Starting with {country} using {model} model'.format(country=country,model=model))
             if model == 'arima':
+                st = datetime.now()
                 errors,pred,forecast = models.ARIMA()
+                print('\tTotal time: {time}'.format(time=datetime.now()-st).split(".")[0])
             if model == 'lstm':
+                st = datetime.now()
                 errors,pred,forecast = models.LSTM()
+                print('\tTotal time: {time}'.format(time=datetime.now()-st).split(".")[0])
             if model == 'prophet':
+                st = datetime.now()
                 errors,pred,forecast = models.prophet()
+                print('\tTotal time: {time}'.format(time=datetime.now()-st).split(".")[0])
             for e in metrics:
                 errorMetrics[e].loc[country][model] = errors[e]
 
