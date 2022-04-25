@@ -105,6 +105,32 @@ class Models:
             self.plot(xData, yData, linestyle, legends, labels, fileName, title)
         return dailyCases,daysSince
 
+    def plot(self, xData, yData, lineStyle, legends, labels, fileName, title, **opts):
+        weekLimit = 40  #Week limit to show in plot
+        fig = plt.figure(figsize=(12,10))
+        ax = fig.add_subplot(111)
+        plt.title(title)
+        plt.xlabel(labels[0])
+        plt.ylabel(labels[1])
+        plt.xticks(rotation=45)
+        for xd,yd,ls,l in zip(xData, yData, lineStyle, legends):
+            plt.plot(xd[-weekLimit*7:], yd[-weekLimit*7:], ls, label=l)
+        if 'vertical' in opts:
+            for ver in opts['vertical']:
+                plt.axvline(x=ver[0], color='k', linestyle='--')
+                ax.text(ver[0],ax.dataLim.max[-1],ver[1],size=14,horizontalalignment='right',color='green')
+                ax.text(ver[0],ax.dataLim.max[-1],ver[2],size=14,horizontalalignment='left',color='green')
+        plt.legend(loc=2)
+        plt.savefig(self.plots_path + fileName)
+
+    def plotResidualsARIMA(self, residuals, model):
+        residuals.plot()
+        plt.savefig(self.resPath + '{country}_{model}_residual_error.png'.format(country=self.country, model=model))
+        residuals.plot(kind='kde')
+        plt.savefig(self.resPath + '{country}_{model}_residual_error_kde.png'.format(country=self.country, model=model))
+
+
+    #METRICS
     def __errors(self,validCases,prediction):
         errors = {}
         errors['R2'] = r2_score(validCases,prediction)
@@ -124,6 +150,7 @@ class Models:
         for e in weights:
             wsm += errors[e] * weights[e]
         return wsm
+
 
     #REGRESSION
     def __regression(self, method, poly=3):
@@ -161,7 +188,8 @@ class Models:
         title = "Daily Cases {model} Regression Prediction for {country}".format(country=self.country,model=method)
         self.plot(xData, yData, linestyle, legends, labels, fileName, title, vertical=vertical)
         return errors,pred
-    
+
+
     #ARIMA
     def __ARIMA(self, order):
         preds = []
@@ -215,29 +243,6 @@ class Models:
         pred.to_csv(self.csv_path + '{country}_{model}_validation{extra}.csv'.format(country=self.country,model=method,extra=self.extra))
         forecast.to_csv(self.csv_path + '{country}_{model}_forecast{extra}.csv'.format(country=self.country,model=method,extra=self.extra))
         return errors,pred,forecast
-
-    def plot(self, xData, yData, lineStyle, legends, labels, fileName, title, **opts):
-        fig = plt.figure(figsize=(12,10))
-        ax = fig.add_subplot(111)
-        plt.title(title)
-        plt.xlabel(labels[0])
-        plt.ylabel(labels[1])
-        plt.xticks(rotation=45)
-        for xd,yd,ls,l in zip(xData, yData, lineStyle, legends):
-            plt.plot(xd, yd, ls, label=l)
-        if 'vertical' in opts:
-            for ver in opts['vertical']:
-                plt.axvline(x=ver[0], color='k', linestyle='--')
-                ax.text(ver[0],ax.dataLim.max[-1],ver[1],size=14,horizontalalignment='right',color='green')
-                ax.text(ver[0],ax.dataLim.max[-1],ver[2],size=14,horizontalalignment='left',color='green')
-        plt.legend(loc=2)
-        plt.savefig(self.plots_path + fileName)
-
-    def plotResidualsARIMA(self, residuals, model):
-        residuals.plot()
-        plt.savefig(self.resPath + '{country}_{model}_residual_error.png'.format(country=self.country, model=model))
-        residuals.plot(kind='kde')
-        plt.savefig(self.resPath + '{country}_{model}_residual_error_kde.png'.format(country=self.country, model=model))
 
 
     #Prophet
@@ -308,7 +313,7 @@ class Models:
         return errors,pred,forecast
 
 
-    #MLP
+    #MLP (Pending)
     def split_sequence(self,sequence, n_steps):
         X, y = list(), list()
         for i in range(len(sequence)):
@@ -332,6 +337,7 @@ class Models:
 
     def MLP(self):
         pass
+
 
     #LSTM
     def timeseries_to_supervised(self, data, lag=1):
