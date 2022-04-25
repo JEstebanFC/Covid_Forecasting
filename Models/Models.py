@@ -190,12 +190,8 @@ class Models:
         residuals = pd.DataFrame(model_fit.resid)
         return errors, pred, forecast, residuals
 
-    def ARIMA(self, order):
+    def ARIMA(self):
         method = 'ARIMA'
-        # order = (4,1,1)
-        # order = (5,1,0)
-        # order = (2,1,1)
-        # order = (1,1,1)
         model = auto_arima(self.activecases, test='adf', suppress_warnings=True)
         order = model.order
         errors,pred,forecast,residuals = self.__ARIMA(order)
