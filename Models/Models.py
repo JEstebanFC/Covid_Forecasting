@@ -106,7 +106,7 @@ class Models:
         return dailyCases,daysSince
 
     def plot(self, xData, yData, lineStyle, legends, labels, fileName, title, **opts):
-        weekLimit = 40  #Week limit to show in plot
+        weekLimit = 30  #Week limit to show in plot
         fig = plt.figure(figsize=(12,10))
         ax = fig.add_subplot(111)
         plt.title(title)
