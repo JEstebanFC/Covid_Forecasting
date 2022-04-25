@@ -438,7 +438,6 @@ class Models:
         train_reshaped = train_scaled[:, 0].reshape(len(train_scaled), 1, 1)
         self.temp = lstm_model.predict(train_reshaped, batch_size=1)
         errors,predictions,forecast = self.__LSTM(lstm_model,test_scaled,scaler)
-        
 
         xData = [self.activecases.index, self.valid_index.index]
         yData = [self.activecases.values, predictions]
