@@ -27,7 +27,7 @@ if __name__ == "__main__":
     parser.add_option('-f', '--first-day', dest='firstDay', default=None)
     parser.add_option('-l', '--last-day', dest='lastDay', default=None)
     parser.add_option('-p', '--prediction', dest='prediction', type=int, default=0)
-    parser.add_option('-r', '--ratio', dest='ratio', type=float, default=0.75)
+    parser.add_option('-r', '--ratio', dest='ratio', type=str, default='0.75')
     parser.add_option('--daily-plot', dest='dailyPlot', action='store_true', default=False)
     options, args = parser.parse_args()
     options.countries = options.countries.split(',')
@@ -56,7 +56,8 @@ if __name__ == "__main__":
     
     resultsPath = []
 
-    metrics = ['R2', 'MAE', 'MAPE', 'RMSE', 'NRMSE']
+    metrics = ['MAE', 'RMSE', 'R2', 'MAPE', 'NRMSE', 'WSM']
+    metrics = ['R2', 'MAPE', 'NRMSE', 'WSM']
     errorMetrics = {}
     for e in metrics:
         errorMetrics[e] = pd.DataFrame(columns=options_models, index=options.countries)
