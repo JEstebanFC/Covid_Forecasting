@@ -114,7 +114,6 @@ if __name__ == "__main__":
     print()
 
     errors = pd.concat(list(errorMetrics.values()),keys=list(errorMetrics.keys()),axis=0)
-    errors.to_csv(resultsPath[0] + 'csv\\Errors.csv')
-
+    errors.to_csv(resultsPath[0] + 'csv\\Errors_{Countries}.csv'.format(Countries='_'.join(options.countries)))
 
 
