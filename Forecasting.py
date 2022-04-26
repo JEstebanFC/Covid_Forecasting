@@ -42,8 +42,6 @@ if __name__ == "__main__":
             continue
         if model in ['arima','lstm', 'prophet']:
             options_models.append(model)
-        # elif 'polynomial' in model:
-        #     options_models.append(model)
 
     dataOpts = {}
     dataOpts['initDay'] = options.firstDay
@@ -91,9 +89,7 @@ if __name__ == "__main__":
 
     if options_models != []:
         for e in metrics:
-            print('\n' + color.BOLD + e + color.END)
-            print(errorMetrics[e].to_string())
-            print()
+            ranking = pd.DataFrame(columns=range(1,len(options_models)+1),index=errorMetrics[e].index)
             for country in options.countries:
                 metricDict = dict(errorMetrics[e].loc[country])
                 metrics = list(metricDict.keys())
@@ -101,12 +97,16 @@ if __name__ == "__main__":
                     errors = 1 - pd.array(list(metricDict.values()))
                 else:
                     errors = pd.array(list(metricDict.values()))
-                ranking = ''
+                rank = []
                 for i in argsort(errors):
-                    if ranking:
-                        ranking += ', '
-                    ranking += metrics[i]
-                print('Ranking for %s: %s' %(country,ranking))
+                    rank.append(metrics[i])
+                ranking.loc[country] = rank
+            errorMetrics[e] = pd.concat([errorMetrics[e],ranking],axis=1)
+            print('\n' + color.BOLD + e + color.END)
+            print(errorMetrics[e].to_string())
+            print()
+            result = pd.concat([errorMetrics[e],ranking],axis=1)
+            # print(result)
 
     print(color.BOLD + '\nResults saved in: ' + color.END)
     for p in resultsPath:
