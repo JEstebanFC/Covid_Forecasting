@@ -235,13 +235,13 @@ class Models:
             linestyle.append('*-k')
             legends.append('{days} days of Forecast'.format(days=len(self.forecastDays)))
             vertical.append([self.forecastDays.index[0],'','  Forecast'])
+            forecast.to_csv(self.csv_path + '{country}_{model}_forecast{extra}.csv'.format(country=self.country,model=method,extra=self.extra))
         labels = ['Date Time','Daily Cases']
         fileName = '{country}_{model}{extra}.png'.format(country=self.country, model=method + str(order),extra=self.extra)
         title = "Daily Cases {model} Model Forecasting for {country}".format(country=self.country,model=method)
         self.plot(xData, yData, linestyle, legends, labels, fileName, title, vertical=vertical)
         self.plotResidualsARIMA(residuals, method + str(order).replace(' ',''))
         pred.to_csv(self.csv_path + '{country}_{model}_validation{extra}.csv'.format(country=self.country,model=method,extra=self.extra))
-        forecast.to_csv(self.csv_path + '{country}_{model}_forecast{extra}.csv'.format(country=self.country,model=method,extra=self.extra))
         return errors,pred,forecast
 
 
@@ -304,39 +304,13 @@ class Models:
             linestyle.append('*-k')
             legends.append('{days} days of Forecast'.format(days=len(self.forecastDays)))
             vertical.append([self.forecastDays.index[0],'','  Forecast'])
+            forecast.to_csv(self.csv_path + '{country}_{model}_forecast{extra}.csv'.format(country=self.country,model=method,extra=self.extra))
         labels = ['Date Time','Daily Cases']
         fileName = '{country}_{model}{extra}.png'.format(country=self.country, model=method,extra=self.extra)
         title = "Daily Cases {model} Model Forecasting for {country}".format(country=self.country,model=method)
         self.plot(xData, yData, linestyle, legends, labels, fileName, title, vertical=vertical)
-        forecast.to_csv(self.csv_path + '{country}_{model}_forecast{extra}.csv'.format(country=self.country,model=method,extra=self.extra))
         
         return errors,pred,forecast
-
-
-    #MLP (Pending)
-    def split_sequence(self,sequence, n_steps):
-        X, y = list(), list()
-        for i in range(len(sequence)):
-            # find the end of this pattern
-            end_ix = i + n_steps
-            # check if we are beyond the sequence
-            if end_ix > len(sequence)-1:
-                break
-            # gather input and output parts of the pattern
-            seq_x, seq_y = sequence[i:end_ix], sequence[end_ix]
-            X.append(seq_x)
-            y.append(seq_y)
-        return np.array(X), np.array(y)
-    
-    def __MLP(self,X,y,n_steps):
-        model = Sequential()
-        model.add(Dense(100, activation='relu', input_dim=n_steps))
-        model.add(Dense(1))
-        model.compile(optimizer='adam', loss='mse')
-        model.fit(X, y, epochs=2000, verbose=0)
-
-    def MLP(self):
-        pass
 
 
     #LSTM
@@ -450,12 +424,12 @@ class Models:
             linestyle.append('*-k')
             legends.append('{days} days of Forecast'.format(days=len(self.forecastDays)))
             vertical.append([self.forecastDays.index[0],'','  Forecast'])
+            forecast.to_csv(self.csv_path + '{country}_{model}_forecast{extra}.csv'.format(country=self.country,model=method,extra=self.extra))
         labels = ['Date Time','Daily Cases']
         fileName = '{country}_{model}{extra}.png'.format(country=self.country, model=method.lower(),extra=self.extra)
         title = "Daily Cases {model} Prediction for {country}".format(country=self.country,model=method)
         self.plot(xData, yData, linestyle, legends, labels, fileName, title, vertical=vertical)
         # print(forecast.to_string())
-        forecast.to_csv(self.csv_path + '{country}_{model}_forecast{extra}.csv'.format(country=self.country,model=method,extra=self.extra))
         return errors,predictions,forecast
 
 #SuppresComments
