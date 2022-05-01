@@ -31,23 +31,35 @@ aErrors.to_csv(rPath + 'AllErrors.csv')
 
 models = ['arima', 'prophet', 'lstm']
 labels = ['Weeks','Metric']
-lineStyle = ['o-C0']
+# lineStyle = ['o-C0']
+lineStyle = ['o-C0','o-C1','o-C2']
 Models.Models.plots_path = rPath
 
 wsm = aErrors.xs('WSM',level=1)
 countries = np.unique(wsm['Countries'].values)
 for c in countries:
     wsmc = wsm.loc[wsm['Countries']==c]
+    xData = []
+    yData = []
+    legends = []
+    fileName = '{country}.png'.format(country=c)
     for m in models:
-        xData = [wsmc[m].index]
-        yData = [wsmc[m].values]
-        legend = m.upper()
-        fileName = '{country}_{model}.png'.format(country=c, model=m.upper())
-        title = '{model} metric for {country} over weeks'.format(country=c,model=m.upper())
-        Models.Models.plots_path = rPath
-        Models.Models.plot(Models.Models,xData,yData,lineStyle,legend,labels,fileName,title)
+        xData.append(wsmc[m].index)
+        yData.append(wsmc[m].values)
+        legends.append(m.upper())
+        title = 'Metric for {country} over weeks'.format(country=c)
+    Models.Models.plot(Models.Models,xData,yData,lineStyle,legends,labels,fileName,title)
         
   
-
+# for c in countries:
+#     wsmc = wsm.loc[wsm['Countries']==c]
+#     for m in models:
+#         xData = [wsmc[m].index]
+#         yData = [wsmc[m].values]
+#         legends = m.upper()
+#         fileName = '{country}_{model}.png'.format(country=c, model=m.upper())
+#         title = '{model} metric for {country} over weeks'.format(country=c,model=m.upper())
+#         Models.Models.plot(Models.Models,xData,yData,lineStyle,legends,labels,fileName,title)
+        
 
 
