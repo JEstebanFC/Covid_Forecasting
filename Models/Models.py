@@ -3,11 +3,12 @@ import logging
 import numpy as np
 from numpy.testing._private.utils import print_assert_equal
 import pandas as pd
-import datetime as dt
 import warnings as wn
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
 plt.rcParams.update({'figure.max_open_warning': 0})
+
+from datetime import datetime
 
 from Utils.CovidDB import CovidDB
 
@@ -408,7 +409,8 @@ class Models:
         train = supervised_values[:self.train_quantity]
         test = supervised_values[self.train_quantity:]
         scaler, train_scaled, test_scaled = self.scale(train, test)
-        lstm_model = self.fit_lstm(train_scaled, 1, 3000, 4)
+        lstm_model = self.fit_lstm(train_scaled, 1, 100, 4)
+        # lstm_model = self.fit_lstm(train_scaled, 1, 3000, 4)
         train_reshaped = train_scaled[:, 0].reshape(len(train_scaled), 1, 1)
         self.temp = lstm_model.predict(train_reshaped, batch_size=1)
         errors,predictions,forecast = self.__LSTM(lstm_model,test_scaled,scaler)
