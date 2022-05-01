@@ -310,7 +310,7 @@ class Models:
         fileName = '{country}_{model}{extra}.png'.format(country=self.country, model=method,extra=self.extra)
         title = "Daily Cases {model} Model Forecasting for {country}".format(country=self.country,model=method)
         self.plot(xData, yData, linestyle, legends, labels, fileName, title, vertical=vertical)
-        
+        pred.to_csv(self.csv_path + '{country}_{model}_validation{extra}.csv'.format(country=self.country,model=method,extra=self.extra))
         return errors,pred,forecast
 
 
@@ -398,8 +398,9 @@ class Models:
                 yhat *= -1
             forecast.append(yhat)
             history = np.array([yhat])
+        pred = pd.Series(predictions, self.valid_index)
         forecast = pd.Series(forecast, self.forecastDays.index)
-        return errors, predictions, forecast
+        return errors, pred, forecast
 
     def LSTM(self):
         method = 'LSTM'
@@ -409,14 +410,14 @@ class Models:
         train = supervised_values[:self.train_quantity]
         test = supervised_values[self.train_quantity:]
         scaler, train_scaled, test_scaled = self.scale(train, test)
-        lstm_model = self.fit_lstm(train_scaled, 1, 100, 4)
+        lstm_model = self.fit_lstm(train_scaled, 1, 300, 4)
         # lstm_model = self.fit_lstm(train_scaled, 1, 3000, 4)
         train_reshaped = train_scaled[:, 0].reshape(len(train_scaled), 1, 1)
         self.temp = lstm_model.predict(train_reshaped, batch_size=1)
-        errors,predictions,forecast = self.__LSTM(lstm_model,test_scaled,scaler)
+        errors,pred,forecast = self.__LSTM(lstm_model,test_scaled,scaler)
 
         xData = [self.activecases.index, self.valid_index.index]
-        yData = [self.activecases.values, predictions]
+        yData = [self.activecases.values, pred]
         vertical = [[self.valid_index.index[0],'Training   ','  Validation']]
         linestyle = ['o-C0','o-r']
         legends = ['Daily Cases', 'Predicted '+ method]
@@ -431,8 +432,9 @@ class Models:
         fileName = '{country}_{model}{extra}.png'.format(country=self.country, model=method.lower(),extra=self.extra)
         title = "Daily Cases {model} Prediction for {country}".format(country=self.country,model=method)
         self.plot(xData, yData, linestyle, legends, labels, fileName, title, vertical=vertical)
+        pred.to_csv(self.csv_path + '{country}_{model}_validation{extra}.csv'.format(country=self.country,model=method,extra=self.extra))
         # print(forecast.to_string())
-        return errors,predictions,forecast
+        return errors,pred,forecast
 
 #SuppresComments
 class suppress_stdout_stderr(object):
