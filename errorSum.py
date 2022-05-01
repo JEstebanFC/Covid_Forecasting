@@ -13,9 +13,12 @@ for ef in eFiles:
     df = pd.read_csv(ePath + ef)
     df.rename(columns={'Unnamed: 0': 'Metric'},inplace=True)
     df.set_index(['Metric'],inplace=True)
-    dfs.append(df)
+    dfs.append(df.round(decimals=5))
 
-result = pd.concat(dfs, keys=index)
-result.index.names = ['Dataset','Metric']
+aErrors = pd.concat(dfs, keys=index)
+aErrors.index.names = ['Dataset','Metric']
+aErrors.replace('arima','ARIMA',inplace=True)
+aErrors.replace('lstm','LSTM',inplace=True)
+aErrors.replace('prophet','Prophet',inplace=True)
 
-result.to_csv(ePath + 'AllErrors.csv')
+aErrors.to_csv(ePath + '..\\Results\\AllErrors.csv')
