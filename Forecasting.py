@@ -22,6 +22,7 @@ class color:
    END = '\033[0m'
 
 if __name__ == "__main__":
+    start = datetime.now()
     parser = OptionParser()
     parser.add_option('-m', '--model', dest='model', default='')
     parser.add_option('-c', '--countries', dest='countries', default='')
@@ -115,5 +116,6 @@ if __name__ == "__main__":
 
     errors = pd.concat(list(errorMetrics.values()),keys=list(errorMetrics.keys()),axis=0)
     errors.to_csv(resultsPath[0] + 'csv\\Errors_{Countries}.csv'.format(Countries='_'.join(options.countries)))
+    print('\tTotal time App: {time}'.format(time=datetime.now()-start).split(".")[0])
 
 
