@@ -116,7 +116,7 @@ class CovidDB:
             countries = [countries]
         for country in countries:
             dailyCases = self.dailyCases(country)
-            if not dailyCases:
+            if dailyCases.empty:
                 print('Error: No data found for', country)
                 continue
             try:
@@ -126,13 +126,14 @@ class CovidDB:
             plt.figure(figsize=(12,10))
             date = str(data.index[-1]).split()[0]
             results_path = self.createFolder(date)
-            plt.plot(data, label='Daily cases')
+            plt.plot(data, 'o-C0', label='Daily cases')
             plt.xlabel("Date Time")
             plt.ylabel("Active Covid-19 Cases")
             plt.xticks(rotation=45)
             plt.legend(loc=2)
             plt.title('Active case History for ' + country)
             plt.savefig(results_path + '{country}_active_cases.png'.format(country=country))
+            print(results_path)
 
     def createFolder(self, date):
         results_path = '%s%s\\' %(RESULTS_PATH, date)
