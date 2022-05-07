@@ -278,6 +278,8 @@ class Models:
                 model = Prophet()
                 model.fit(history)
                 prediction = model.predict(val)
+                if prediction['yhat'][0] < 0:
+                    prediction['yhat'][0] = 0
             preds = preds.append({'ds':prediction['ds'][0], 'y':prediction['yhat'][0]}, ignore_index=True)
             history = history.append({'ds': val['ds'][i], 'y': val['y'][i]}, ignore_index=True)
         errors = self.__errors(self.valid_active,preds['y'].values.reshape(-1,1))
