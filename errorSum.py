@@ -1,80 +1,115 @@
 #!/usr/bin/env python
+from ipaddress import summarize_address_range
 import os
 import pandas as pd
 import numpy as np
 
-from Models import Models
+from Models.Models import Models
+from Utils.CovidDB import CovidDB
 
-PATH = os.getcwd()
+plotResults = True
+if plotResults:
+    PATH = os.getcwd()
 
-ePath = PATH + '\\Results\\2022-04-29\\1st\\Errors\\'
-rPath = PATH + '\\Results\\2022-04-29\\1st\\Results\\'
-eFiles = os.listdir(ePath)
-index = ','.join(eFiles).replace('.csv','').split(',')
+    folder = '02'
+    ePath = PATH + '\\Results\\2022-04-29\\{folder}\\Errors\\'.format(folder=folder)
+    rPath = PATH + '\\Results\\2022-04-29\\{folder}\\Results\\'.format(folder=folder)
+    models = {}
+    models['arima'] = 'ARIMA'
+    models['prophet'] = 'Prophet'
+    models['lstm'] = 'LSTM'
 
-dfs = []
-for ef in eFiles:
-    df = pd.read_csv(ePath + ef)
-    df.rename(columns={'Unnamed: 0': 'Metric'},inplace=True)
-    df.set_index(['Metric'],inplace=True)
-    dfs.append(df.round(decimals=5))
+    summarize_results = False
+    if summarize_results:
+        eFiles = os.listdir(ePath)
+        index = ','.join(eFiles).replace('.csv','').split(',')
+        dfs = []
+        for ef in eFiles:
+            df = pd.read_csv(ePath + ef)
+            df.rename(columns={'Unnamed: 0': 'Metric'},inplace=True)
+            df.set_index(['Metric'],inplace=True)
+            dfs.append(df.round(decimals=5))
 
-aErrors = pd.concat(dfs, keys=index)
-aErrors.index.names = ['Dataset','Metric']
-aErrors.replace('arima','ARIMA',inplace=True)
-aErrors.replace('lstm','LSTM',inplace=True)
-aErrors.replace('prophet','Prophet',inplace=True)
-aErrors.reset_index(inplace=True)
-aErrors.set_index(['Dataset','Metric'],inplace=True)
+        aErrors = pd.concat(dfs, keys=index)
+        aErrors.index.names = ['Dataset','Metric']
+        for m in models:
+            aErrors.replace(m,models[m],inplace=True)
+        aErrors.reset_index(inplace=True)
+        aErrors.set_index(['Dataset','Metric'],inplace=True)
+        aErrors.to_csv(rPath + 'AllErrors.csv')
+    else:
+        index = ['04w', '08w', '10w', '20w', '30w', '40w', 'Full']
+        aErrors = pd.read_csv(rPath + 'AllErrors.csv')
+        aErrors.reset_index(inplace=True)
+        aErrors.set_index(['Dataset','Metric'],inplace=True)
 
-aErrors.to_csv(rPath + 'AllErrors.csv')
+    labels = ['Weeks','Metric']
+    lineStyle = ['o-C0','o-C1','o-C2']
+    Models.plots_path = rPath
 
-models = ['arima', 'prophet', 'lstm']
-labels = ['Weeks','Metric']
-lineStyle = ['o-C0','o-C1','o-C2']
-Models.Models.plots_path = rPath
+    wsm = aErrors.xs('WSM',level=1)
+    countries = np.unique(wsm['Countries'].values)
 
-wsm = aErrors.xs('WSM',level=1)
-countries = np.unique(wsm['Countries'].values)
-for c in countries:
-    wsmc = wsm.loc[wsm['Countries']==c]
-    xData = []
-    yData = []
-    legends = []
-    fileName = '{country}.png'.format(country=c)
-    for m in models:
-        xData.append(wsmc[m].index)
-        yData.append(wsmc[m].values)
-        legends.append(m.upper())
-        title = 'Metric for {country} over weeks'.format(country=c)
-    Models.Models.plot(Models.Models,xData,yData,lineStyle,legends,labels,fileName,title)
-
-
-lineStyle = ['o-C0','o-C1','o-C2','o-C3','o-C4','o-C5']
-for m in models:
-    xData = []
-    yData = []
-    legends = []
-    fileName = '{model}.png'.format(model=m)
     for c in countries:
         wsmc = wsm.loc[wsm['Countries']==c]
-        xData.append(wsmc[m].index)
-        yData.append(wsmc[m].values)
-        legends.append(c)
-        title = '{Model} Metric for every country over weeks'.format(Model=m.upper())
-    Models.Models.plot(Models.Models,xData,yData,lineStyle,legends,labels,fileName,title)
+        xData = []
+        yData = []
+        legends = []
+        fileName = '{country}.png'.format(country=c)
+        for m in models:
+            xData.append(wsmc[m].index)
+            yData.append(wsmc[m].values)
+            legends.append(m.upper())
+            title = 'Metric for {country} over weeks'.format(country=c)
+        Models.plot(Models,xData,yData,lineStyle,legends,labels,fileName,title)
+    
+    lineStyle = ['o-C0','o-C1','o-C2','o-C3','o-C4','o-C5']
+    for m in models:
+        xData = []
+        yData = []
+        legends = []
+        fileName = '{model}.png'.format(model=m)
+        for c in countries:
+            wsmc = wsm.loc[wsm['Countries']==c]
+            xData.append(wsmc[m].index)
+            yData.append(wsmc[m].values)
+            legends.append(c)
+            title = '{Model} Metric for every country over weeks'.format(Model=m.upper())
+        Models.plot(Models,xData,yData,lineStyle,legends,labels,fileName,title)
+
+dailyPlots = False
+if dailyPlots:
+    countries = ['Australia','New Zealand','China','Japan','US','Germany']
+    dataOpts = {}
+    dataOpts['initDay'] = None
+    dataOpts['lastDay'] = '2022-04-29'
+    dataOpts['forecast'] = 0
+    dataOpts['train_percent'] = '4w'
+    dataOpts['plot'] = False
+
+    for country in countries:
+        models = Models(country)
+        t = models.selectData(**dataOpts)
+
+        #Plotting Daily Cases
+        xData = [models.activecases.index]
+        yData = [models.activecases.values]
+        linestyle = ['o-C0']
+        legends = ['Daily cases']
+        labels = ['Date Time','Daily Cases']
+        fileName = '{country}_daily_cases.png'.format(country=country)
+        title = 'Daily case for ' + country
+
+        vertical = []
+        timeFrame = [10,20,30,40]
+        for tf in timeFrame:
+            last = models.activecases.index[-1] - pd.DateOffset(7*tf)
+            vertical.append([last,str(tf)+'w',''])
+
+        models.plot(xData, yData, linestyle, legends, labels, fileName, title, plotLimit=False, vertical=vertical)
 
 
-# lineStyle = ['o-C0']
-# for c in countries:
-#     wsmc = wsm.loc[wsm['Countries']==c]
-#     for m in models:
-#         xData = [wsmc[m].index]
-#         yData = [wsmc[m].values]
-#         legends = m.upper()
-#         fileName = '{country}_{model}.png'.format(country=c, model=m.upper())
-#         title = '{model} metric for {country} over weeks'.format(country=c,model=m.upper())
-#         Models.Models.plot(Models.Models,xData,yData,lineStyle,legends,labels,fileName,title)
-        
+
+
 
 
