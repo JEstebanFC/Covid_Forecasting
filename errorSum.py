@@ -1,17 +1,16 @@
 #!/usr/bin/env python
-from ipaddress import summarize_address_range
 import os
 import pandas as pd
 import numpy as np
 
 from Models.Models import Models
-from Utils.CovidDB import CovidDB
+# from Utils.CovidDB import CovidDB
 
 plotResults = True
 if plotResults:
     PATH = os.getcwd()
 
-    folder = '02'
+    folder = '98'
     ePath = PATH + '\\Results\\2022-04-29\\{folder}\\Errors\\'.format(folder=folder)
     rPath = PATH + '\\Results\\2022-04-29\\{folder}\\Results\\'.format(folder=folder)
     models = {}
@@ -43,13 +42,13 @@ if plotResults:
         aErrors.reset_index(inplace=True)
         aErrors.set_index(['Dataset','Metric'],inplace=True)
 
-    labels = ['Weeks','Metric']
+    wsm = aErrors.xs('WSM',level=1)
+    countries = np.unique(wsm['Countries'].values)
+    
     lineStyle = ['o-C0','o-C1','o-C2']
     Models.plots_path = rPath
 
-    wsm = aErrors.xs('WSM',level=1)
-    countries = np.unique(wsm['Countries'].values)
-
+    labels = ['Weeks','Metric']
     for c in countries:
         wsmc = wsm.loc[wsm['Countries']==c]
         xData = []
@@ -76,6 +75,22 @@ if plotResults:
             legends.append(c)
             title = '{Model} Metric for every country over weeks'.format(Model=m.upper())
         Models.plot(Models,xData,yData,lineStyle,legends,labels,fileName,title)
+    
+    labels = ['Country','Metric']
+    ylim = [0,1.90]
+    for i in index:
+        xData = []
+        yData = []
+        legends = []
+        fileName = '{index}.png'.format(index=i)
+        for m in models:
+            wsmi = wsm.loc[i]
+            xData.append(wsmi['Countries'].values)
+            yData.append(wsmi[m].values)
+            legends.append(m)
+            title = '{index} Metric for every country over weeks'.format(index=i)
+        Models.plot(Models,xData,yData,lineStyle,legends,labels,fileName,title,ylim=ylim)
+
 
 dailyPlots = False
 if dailyPlots:
