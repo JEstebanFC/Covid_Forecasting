@@ -126,6 +126,8 @@ class Models:
                 plt.axvline(x=ver[0], color='k', linestyle='--')
                 ax.text(ver[0],ax.dataLim.max[-1],ver[1],size=14,horizontalalignment='right',color='green')
                 ax.text(ver[0],ax.dataLim.max[-1],ver[2],size=14,horizontalalignment='left',color='green')
+        if 'ylim' in opts:
+            plt.ylim(opts['ylim'][0],opts['ylim'][1])
         plt.legend(loc=2)
         plt.savefig(self.plots_path + fileName)
 
@@ -279,6 +281,7 @@ class Models:
                 model.fit(history)
                 prediction = model.predict(val)
                 if prediction['yhat'][0] < 0:
+                    # prediction['yhat'][0] *= -1
                     prediction['yhat'][0] = 0
             preds = preds.append({'ds':prediction['ds'][0], 'y':prediction['yhat'][0]}, ignore_index=True)
             history = history.append({'ds': val['ds'][i], 'y': val['y'][i]}, ignore_index=True)
@@ -379,11 +382,14 @@ class Models:
         return yhat[0,0]
 
     def __LSTM(self, model, test_scaled, scaler):
+        pred_scale = list()
         predictions = list()
+        forecast = list()
         for i in range(len(test_scaled)):
             # make one-step forecast
-            X, y = test_scaled[i, 0:-1], test_scaled[i, -1]
+            X = test_scaled[i, 0:-1]
             yhat = self.forecast_lstm(model, 1, X)
+            pred_scale.append(yhat)
             # invert scaling
             yhat = self.invert_scale(scaler, X, yhat)
             # invert differencing
@@ -394,17 +400,17 @@ class Models:
             predictions.append(yhat)
         errors = self.__errors(self.valid_active,predictions)
         #Forecasting
-        forecast = list()
-        history = test_scaled[-1,-1:]
+        # history = test_scaled[-1,-1:]
+        history = np.array([pred_scale[-1]])
         for i in range(len(self.forecastDays)):
             X = history
             yhat = self.forecast_lstm(model, 1, X)
+            history = np.array([yhat])
             yhat = self.invert_scale(scaler, X, yhat)
             yhat = self.inverse_difference(self.activecases.values, yhat, len(self.forecastDays)+1-i)
             if yhat < 0:
                 yhat *= -1
             forecast.append(yhat)
-            history = np.array([yhat])
         pred = pd.Series(predictions, self.valid_index)
         forecast = pd.Series(forecast, self.forecastDays.index)
         return errors, pred, forecast
@@ -428,6 +434,11 @@ class Models:
         vertical = [[self.valid_index.index[0],'Training   ','  Validation']]
         linestyle = ['o-C0','o-r']
         legends = ['Daily Cases', 'Predicted '+ method]
+        labels = ['Date Time','Daily Cases']
+        title = "Daily Cases {model} Prediction for {country}".format(country=self.country,model=method)
+        fileName = '{country}_{model}.png'.format(country=self.country, model=method.lower())
+        self.plot(xData, yData, linestyle, legends, labels, fileName, title, vertical=vertical)
+        fileName = '{country}_{model}{extra}.png'.format(country=self.country, model=method.lower(),extra=self.extra)
         if len(forecast) != 0:
             xData.append(self.forecastDays.index)
             yData.append(forecast)
@@ -435,9 +446,6 @@ class Models:
             legends.append('{days} days of Forecast'.format(days=len(self.forecastDays)))
             vertical.append([self.forecastDays.index[0],'','  Forecast'])
             forecast.to_csv(self.csv_path + '{country}_{model}_forecast{extra}.csv'.format(country=self.country,model=method,extra=self.extra))
-        labels = ['Date Time','Daily Cases']
-        fileName = '{country}_{model}{extra}.png'.format(country=self.country, model=method.lower(),extra=self.extra)
-        title = "Daily Cases {model} Prediction for {country}".format(country=self.country,model=method)
         self.plot(xData, yData, linestyle, legends, labels, fileName, title, vertical=vertical)
         pred.to_csv(self.csv_path + '{country}_{model}_validation{extra}.csv'.format(country=self.country,model=method,extra=self.extra))
         # print(forecast.to_string())
